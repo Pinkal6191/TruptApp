@@ -6,6 +6,7 @@ import '../../auth/bloc/auth_event.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
+import '../../orders/presentation/order_history_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -129,6 +130,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }
                 return const Text('No products data.');
               },
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('View All Orders (Admin)'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+                },
+              ),
             ),
           ],
         ),

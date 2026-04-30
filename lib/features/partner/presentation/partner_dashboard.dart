@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
+import '../../orders/presentation/create_order_screen.dart';
+import '../../orders/presentation/order_history_screen.dart';
 
 class PartnerDashboard extends StatelessWidget {
   const PartnerDashboard({super.key});
@@ -42,7 +44,7 @@ class PartnerDashboard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 onPressed: () {
-                  // Navigate to New Order flow (Phase 3)
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen()));
                 },
               ),
               const SizedBox(height: 16),
@@ -53,7 +55,7 @@ class PartnerDashboard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 onPressed: () {
-                  // Navigate to Order History
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
                 },
               ),
             ],
