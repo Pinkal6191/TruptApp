@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "593842231374",
+    "project_id": "truptapp",
+    "storage_bucket": "truptapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:593842231374:android:f1a799a30c7660e02a8b1f",
+        "android_client_info": {
+          "package_name": "com.truptenterprise.trupt_enterprise"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlzchfmc4woXd2khmvY7_SmnlQ5z-T2wI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
