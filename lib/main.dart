@@ -12,6 +12,8 @@ import 'features/products/bloc/product_bloc.dart';
 import 'features/products/repository/product_repository.dart';
 import 'features/orders/bloc/order_bloc.dart';
 import 'features/orders/repository/order_repository.dart';
+import 'features/expenses/bloc/expense_bloc.dart';
+import 'features/expenses/repository/expense_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider(
           create: (context) => OrderBloc(orderRepository: OrderRepository()),
+        ),
+        BlocProvider(
+          create: (context) => ExpenseBloc(expenseRepository: ExpenseRepository()),
         ),
       ],
       child: MaterialApp(

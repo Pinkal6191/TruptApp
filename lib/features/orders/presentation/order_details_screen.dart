@@ -6,6 +6,7 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
+import '../../invoices/services/invoice_service.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final OrderModel order;
@@ -221,6 +222,25 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            
+            
+            // Generate Invoice Button
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('Generate & Share Invoice'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+                ),
+                onPressed: () {
+                  InvoiceService.generateAndShareInvoice(widget.order);
+                },
               ),
             ),
             

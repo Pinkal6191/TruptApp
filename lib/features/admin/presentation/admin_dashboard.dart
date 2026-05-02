@@ -7,6 +7,10 @@ import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
 import '../../orders/presentation/order_history_screen.dart';
+import '../../expenses/bloc/expense_bloc.dart';
+import '../../expenses/bloc/expense_event.dart';
+import '../../expenses/bloc/expense_state.dart';
+import '../../expenses/presentation/expense_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -20,6 +24,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void initState() {
     super.initState();
     context.read<ProductBloc>().add(LoadProducts());
+    context.read<ExpenseBloc>().add(LoadExpenses());
   }
 
   @override
@@ -132,6 +137,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
               },
             ),
             const SizedBox(height: 24),
+            const Text(
+              'Financial Summary',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            BlocBuilder<ExpenseBloc, ExpenseState>(
+              builder: (context, state) {
+                double totalExpense = 0.0;
+                if (state is ExpensesLoaded) {
+                  totalExpense = state.expenses.fold(0, (sum, item) => sum + item.amount);
+                }
+                return Card(
+                  elevation: 2,
+                  shadowColor: Colors.black12,
+                  color: Colors.red.shade50,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Expenses Logged:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red)),
+                        Text('₹${totalExpense.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -144,6 +179,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.account_balance_wallet),
+                label: const Text('Manage Expenses'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+                ),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseManagementScreen()));
                 },
               ),
             ),
