@@ -6,6 +6,7 @@ import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_event.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/approval_pending_screen.dart';
 import 'features/admin/presentation/admin_dashboard.dart';
 import 'features/partner/presentation/partner_dashboard.dart';
 import 'features/products/bloc/product_bloc.dart';
@@ -70,6 +71,8 @@ class AuthWrapper extends StatelessWidget {
               child: CircularProgressIndicator(),
             ),
           );
+        } else if (state is AuthApprovalPending) {
+          return const ApprovalPendingScreen();
         } else if (state is Authenticated) {
           // Route based on role
           if (state.user.role == 'admin') {

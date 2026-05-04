@@ -11,6 +11,7 @@ import '../../expenses/bloc/expense_bloc.dart';
 import '../../expenses/bloc/expense_event.dart';
 import '../../expenses/bloc/expense_state.dart';
 import '../../expenses/presentation/expense_management_screen.dart';
+import 'user_approval_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -195,6 +196,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseManagementScreen()));
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.how_to_reg),
+                label: const Text('Pending Approvals'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UserApprovalScreen()),
+                  );
                 },
               ),
             ),

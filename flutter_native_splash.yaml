@@ -1,0 +1,10 @@
+flutter_native_splash:
+  color: "#2C2E33" # Matches your logo's dark grey background
+  image: assets/images/logo.png
+  android: true
+  ios: true
+  fullscreen: true
+
+  android_12:
+    image: assets/images/logo.png
+    color: "#2C2E33"

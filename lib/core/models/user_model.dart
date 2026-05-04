@@ -4,6 +4,7 @@ class UserModel {
   final String mobile;
   final String role; // 'admin', 'partner', 'distributor'
   final String? gstNumber;
+  final bool isApproved;
 
   UserModel({
     required this.uid,
@@ -11,6 +12,7 @@ class UserModel {
     required this.mobile,
     required this.role,
     this.gstNumber,
+    this.isApproved = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -20,6 +22,7 @@ class UserModel {
       mobile: map['mobile'] ?? '',
       role: map['role'] ?? 'partner',
       gstNumber: map['gstNumber'],
+      isApproved: map['isApproved'] ?? false,
     );
   }
 
@@ -29,6 +32,7 @@ class UserModel {
       'mobile': mobile,
       'role': role,
       'gstNumber': gstNumber,
+      'isApproved': isApproved,
     };
   }
 }
