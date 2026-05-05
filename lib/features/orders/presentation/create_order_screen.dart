@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/order_item_model.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/models/product_model.dart';
+import '../../../core/models/user_model.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../products/bloc/product_bloc.dart';
@@ -10,6 +11,7 @@ import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
 import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
+import '../../admin/repository/user_repository.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -20,17 +22,53 @@ class CreateOrderScreen extends StatefulWidget {
 
 class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final List<OrderItemModel> _cart = [];
-  final double gstRate = 0.18; // 18% GST
+  final double gstRate = 0.05; // 5% GST (Included in price)
+  final _shopNameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  
+  final UserRepository _userRepository = UserRepository();
+  List<UserModel> _distributors = [];
+  UserModel? _selectedDistributor;
+  bool _isLoadingUsers = false;
 
   @override
   void initState() {
     super.initState();
     context.read<ProductBloc>().add(LoadProducts());
+    _loadDistributors();
   }
 
-  void _addToCart(ProductModel product, String userRole) {
-    // Check if already in cart
+  Future<void> _loadDistributors() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.user.role == 'admin') {
+      setState(() => _isLoadingUsers = true);
+      try {
+        final dists = await _userRepository.getDistributors();
+        setState(() => _distributors = dists);
+      } catch (e) {
+        // Handle error
+      } finally {
+        setState(() => _isLoadingUsers = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _shopNameController.dispose();
+    _mobileController.dispose();
+    super.dispose();
+  }
+
+  void _addToCart(ProductModel product, UserModel user) {
     final index = _cart.indexWhere((item) => item.productId == product.id);
+    
+    double defaultPrice = (user.role == 'admin' && _selectedDistributor != null) 
+        ? product.distributorPrice 
+        : product.retailPrice;
+        
+    double price = user.customPrices[product.id] ?? defaultPrice;
+
     if (index != -1) {
       setState(() {
         final existing = _cart[index];
@@ -38,8 +76,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           productId: existing.productId,
           productName: existing.productName,
           quantity: existing.quantity + 1,
-          unitPrice: existing.unitPrice,
-          margin: existing.margin,
+          pricePerCrate: existing.pricePerCrate,
+          distributorCost: existing.distributorCost,
         );
       });
     } else {
@@ -48,7 +86,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           productId: product.id,
           productName: product.name,
           quantity: 1,
-          unitPrice: product.defaultPrice,
+          pricePerCrate: price,
+          distributorCost: product.distributorPrice, // Save original cost for accurate commission
         ));
       });
     }
@@ -66,67 +105,113 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           productId: existing.productId,
           productName: existing.productName,
           quantity: newQuantity,
-          unitPrice: existing.unitPrice,
-          margin: existing.margin,
+          pricePerCrate: existing.pricePerCrate,
+          distributorCost: existing.distributorCost,
         );
       });
     }
   }
 
-  void _updatePrice(int index, double newPrice) {
-    setState(() {
-      final existing = _cart[index];
-      _cart[index] = OrderItemModel(
-        productId: existing.productId,
-        productName: existing.productName,
-        quantity: existing.quantity,
-        unitPrice: newPrice,
-        margin: existing.margin,
-      );
-    });
+  void _editPrice(int index) {
+    final item = _cart[index];
+    final controller = TextEditingController(text: item.pricePerCrate.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Price: ${item.productName}'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Negotiated Price (₹)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final newPrice = double.tryParse(controller.text.trim());
+              if (newPrice != null && newPrice >= 0) {
+                setState(() {
+                  _cart[index] = OrderItemModel(
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantity: item.quantity,
+                    pricePerCrate: newPrice,
+                    distributorCost: item.distributorCost,
+                  );
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Update Bill Price'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _submitOrder(String uid, String name) {
+  void _submitOrder(String uid, String userName, String userRole) {
     if (_cart.isEmpty) return;
+    
+    String targetUid = uid;
+    String displayPartnerName = userName;
+    bool isSupply = false;
 
-    double subtotal = 0;
-    for (var item in _cart) {
-      subtotal += (item.quantity * item.unitPrice);
+    if (userRole == 'admin') {
+      if (_selectedDistributor == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Distributor')));
+        return;
+      }
+      targetUid = _selectedDistributor!.uid;
+      displayPartnerName = _selectedDistributor!.name;
+      isSupply = true;
+    } else {
+      if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name and Mobile Number')));
+        return;
+      }
     }
-    double gstAmount = subtotal * gstRate;
-    double finalAmount = subtotal + gstAmount;
+
+    double totalWithGst = 0;
+    for (var item in _cart) {
+      totalWithGst += (item.quantity * item.pricePerCrate);
+    }
+
+    double subtotal = totalWithGst / (1 + gstRate);
+    double gstAmount = totalWithGst - subtotal;
 
     final order = OrderModel(
-      id: '', // Auto-generated
+      id: '',
       createdBy: uid,
-      partnerName: name,
+      targetUserId: targetUid,
+      partnerName: displayPartnerName,
+      shopName: _shopNameController.text.trim(),
+      customerMobile: _mobileController.text.trim(),
+      creatorRole: userRole,
+      isInclusiveGST: true,
+      isSupplyOrder: isSupply,
       items: _cart,
       subtotal: subtotal,
       gstAmount: gstAmount,
       discount: 0,
-      finalAmount: finalAmount,
+      finalAmount: totalWithGst,
       createdAt: DateTime.now(),
     );
 
     context.read<OrderBloc>().add(CreateOrder(order: order));
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Order created successfully!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
+      const SnackBar(content: Text('Order created successfully!'), backgroundColor: Colors.green),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    double subtotal = 0;
+    double totalWithGst = 0;
     for (var item in _cart) {
-      subtotal += (item.quantity * item.unitPrice);
+      totalWithGst += (item.quantity * item.pricePerCrate);
     }
-    double gstAmount = subtotal * gstRate;
-    double finalAmount = subtotal + gstAmount;
+    double subtotal = totalWithGst / (1 + gstRate);
+    double gstAmount = totalWithGst - subtotal;
 
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
@@ -136,181 +221,101 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: const Text('Create New Order'),
-            elevation: 0,
+            title: Text(user.role == 'admin' ? 'Supply Stock' : 'Create New Order'),
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF1E3A8A),
+            elevation: 0,
           ),
           body: Column(
             children: [
+              // Selection or Form
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                child: user.role == 'admin' 
+                  ? _buildAdminSelection()
+                  : _buildCustomerForm(),
+              ),
+              const Divider(height: 1),
               Expanded(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product List Section
+                    // Product List
                     Expanded(
                       flex: 1,
-                      child: Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Available Products',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E3A8A),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: BlocBuilder<ProductBloc, ProductState>(
-                                builder: (context, state) {
-                                  if (state is ProductLoading) {
-                                    return const Center(child: CircularProgressIndicator());
-                                  } else if (state is ProductLoaded) {
-                                    return ListView.builder(
-                                      itemCount: state.products.length,
-                                      itemBuilder: (context, index) {
-                                        final product = state.products[index];
-                                        return Card(
-                                          elevation: 2,
-                                          shadowColor: Colors.black12,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('Available Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                          ),
+                          Expanded(
+                            child: BlocBuilder<ProductBloc, ProductState>(
+                              builder: (context, state) {
+                                if (state is ProductLoading) return const Center(child: CircularProgressIndicator());
+                                if (state is ProductLoaded) {
+                                  return ListView.builder(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    itemCount: state.products.length,
+                                    itemBuilder: (context, index) {
+                                      final p = state.products[index];
+                                      double defaultPrice = (user.role == 'admin' && _selectedDistributor != null) 
+                                          ? p.distributorPrice 
+                                          : p.retailPrice;
+                                      double displayPrice = user.customPrices[p.id] ?? defaultPrice;
+                                      return Card(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        child: ListTile(
+                                          title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                          subtitle: Text('Price: ₹$displayPrice / crate\n(${p.bottlesPerCrate} bottles)'),
+                                          trailing: ElevatedButton(
+                                            onPressed: () => _addToCart(p, user),
+                                            child: const Text('Add'),
                                           ),
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          child: ListTile(
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                            title: Text(
-                                              product.name,
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
-                                            ),
-                                            subtitle: Text('Base Price: ₹${product.defaultPrice}'),
-                                            trailing: ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(0xFF3B82F6),
-                                                foregroundColor: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                              onPressed: () => _addToCart(product, user.role),
-                                              child: const Text('Add'),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  }
-                                  return const Center(child: Text('Failed to load products.'));
-                                },
-                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                }
+                                return const SizedBox();
+                              },
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    
-                    // Cart Section (Visible if not empty)
+                    // Cart
                     if (_cart.isNotEmpty)
                       Expanded(
                         flex: 1,
                         child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border(left: BorderSide(color: Colors.grey.shade200)),
-                          ),
+                          color: Colors.white,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child: Text(
-                                  'Current Order',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E3A8A),
-                                  ),
-                                ),
+                                child: Text('Order Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               ),
                               Expanded(
                                 child: ListView.builder(
                                   itemCount: _cart.length,
                                   itemBuilder: (context, index) {
                                     final item = _cart[index];
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                    return ListTile(
+                                      title: Text(item.productName),
+                                      subtitle: Text('₹${item.pricePerCrate} x ${item.quantity}'),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                item.productName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                              ),
-                                              Text(
-                                                '₹${(item.quantity * item.unitPrice).toStringAsFixed(2)}',
-                                                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                                              ),
-                                            ],
+                                          IconButton(
+                                            icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                            onPressed: () => _editPrice(index),
+                                            tooltip: 'Negotiate Price',
                                           ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              // Quantity Controls
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(color: Colors.grey.shade300),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(Icons.remove, size: 16),
-                                                      onPressed: () => _updateQuantity(index, item.quantity - 1),
-                                                    ),
-                                                    Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.add, size: 16),
-                                                      onPressed: () => _updateQuantity(index, item.quantity + 1),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              // Price Editable for Distributors
-                                              if (user.role == 'distributor') ...[
-                                                const Text('₹'),
-                                                SizedBox(
-                                                  width: 60,
-                                                  child: TextFormField(
-                                                    initialValue: item.unitPrice.toString(),
-                                                    keyboardType: TextInputType.number,
-                                                    decoration: const InputDecoration(
-                                                      isDense: true,
-                                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                                      border: OutlineInputBorder(),
-                                                    ),
-                                                    onChanged: (val) {
-                                                      if (val.isNotEmpty) {
-                                                        _updatePrice(index, double.parse(val));
-                                                      }
-                                                    },
-                                                  ),
-                                                ),
-                                              ] else ...[
-                                                Text('₹${item.unitPrice} / unit', style: TextStyle(color: Colors.grey.shade600)),
-                                              ]
-                                            ],
-                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(icon: const Icon(Icons.remove), onPressed: () => _updateQuantity(index, item.quantity - 1)),
+                                          Text('${item.quantity}'),
+                                          IconButton(icon: const Icon(Icons.add), onPressed: () => _updateQuantity(index, item.quantity + 1)),
                                         ],
                                       ),
                                     );
@@ -324,70 +329,76 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   ],
                 ),
               ),
-              // Bottom Summary Bar
               if (_cart.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
+                  color: Colors.white,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total (Inclusive of GST)'),
+                          Text('₹${totalWithGst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () => _submitOrder(user.uid, user.name, user.role),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                          child: Text(user.role == 'admin' ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ],
-                  ),
-                  child: SafeArea(
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Subtotal', style: TextStyle(color: Colors.grey)),
-                            Text('₹${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('GST (18%)', style: TextStyle(color: Colors.grey)),
-                            Text('₹${gstAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                            Text('₹${finalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1E3A8A),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () => _submitOrder(user.uid, user.name),
-                            child: const Text('Confirm Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCustomerForm() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _shopNameController,
+            decoration: const InputDecoration(labelText: 'Shop Name', border: OutlineInputBorder(), isDense: true),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: TextField(
+            controller: _mobileController,
+            decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
+            keyboardType: TextInputType.phone,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminSelection() {
+    if (_isLoadingUsers) return const Center(child: CircularProgressIndicator());
+    if (_distributors.isEmpty) return const Text('No distributors found to supply stock.');
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Select Distributor:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<UserModel>(
+          value: _selectedDistributor,
+          items: _distributors.map((u) => DropdownMenuItem(value: u, child: Text(u.name))).toList(),
+          onChanged: (val) => setState(() => _selectedDistributor = val),
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+        ),
+      ],
     );
   }
 }

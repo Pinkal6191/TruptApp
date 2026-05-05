@@ -171,8 +171,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   final item = widget.order.items[index];
                   return ListTile(
                     title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Qty: ${item.quantity} x ₹${item.unitPrice}'),
-                    trailing: Text('₹${(item.quantity * item.unitPrice).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Qty: ${item.quantity} x ₹${item.pricePerCrate}'),
+                    trailing: Text('₹${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                   );
                 },
               ),

@@ -11,7 +11,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       : _productRepository = productRepository,
         super(ProductInitial()) {
     on<LoadProducts>(_onLoadProducts);
+    on<ResetProductState>((event, emit) => emit(ProductInitial()));
     on<AddProduct>(_onAddProduct);
+    on<UpdateProduct>(_onUpdateProduct);
+    on<DeleteProduct>(_onDeleteProduct);
     on<SeedProducts>(_onSeedProducts);
   }
 
@@ -28,13 +31,30 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   Future<void> _onAddProduct(AddProduct event, Emitter<ProductState> emit) async {
     emit(ProductLoading());
     try {
-      final product = ProductModel(
-        id: '', // Firestore auto-generates ID on add
-        name: event.name,
-        defaultPrice: event.price,
-      );
-      await _productRepository.addProduct(product);
+      await _productRepository.addProduct(event.product);
       emit(ProductOperationSuccess(message: 'Product added successfully'));
+      add(LoadProducts());
+    } catch (e) {
+      emit(ProductError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateProduct(UpdateProduct event, Emitter<ProductState> emit) async {
+    emit(ProductLoading());
+    try {
+      await _productRepository.updateProduct(event.product);
+      emit(ProductOperationSuccess(message: 'Product updated successfully'));
+      add(LoadProducts());
+    } catch (e) {
+      emit(ProductError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteProduct(DeleteProduct event, Emitter<ProductState> emit) async {
+    emit(ProductLoading());
+    try {
+      await _productRepository.deleteProduct(event.productId);
+      emit(ProductOperationSuccess(message: 'Product deleted successfully'));
       add(LoadProducts());
     } catch (e) {
       emit(ProductError(message: e.toString()));

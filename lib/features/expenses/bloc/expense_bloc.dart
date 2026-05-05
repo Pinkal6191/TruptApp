@@ -11,6 +11,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
         super(ExpenseInitial()) {
     on<LoadExpenses>(_onLoadExpenses);
     on<AddExpense>(_onAddExpense);
+    on<ResetExpenseState>((event, emit) => emit(ExpenseInitial()));
   }
 
   Future<void> _onLoadExpenses(LoadExpenses event, Emitter<ExpenseState> emit) async {

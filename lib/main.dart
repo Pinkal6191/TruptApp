@@ -9,12 +9,15 @@ import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/approval_pending_screen.dart';
 import 'features/admin/presentation/admin_dashboard.dart';
 import 'features/partner/presentation/partner_dashboard.dart';
+import 'features/distributor/presentation/distributor_dashboard.dart';
 import 'features/products/bloc/product_bloc.dart';
 import 'features/products/repository/product_repository.dart';
 import 'features/orders/bloc/order_bloc.dart';
 import 'features/orders/repository/order_repository.dart';
 import 'features/expenses/bloc/expense_bloc.dart';
 import 'features/expenses/repository/expense_repository.dart';
+import 'features/inventory/bloc/inventory_bloc.dart';
+import 'features/inventory/repository/inventory_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +45,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider(
           create: (context) => ExpenseBloc(expenseRepository: ExpenseRepository()),
+        ),
+        BlocProvider(
+          create: (context) => InventoryBloc(inventoryRepository: InventoryRepository()),
         ),
       ],
       child: MaterialApp(
@@ -77,6 +83,8 @@ class AuthWrapper extends StatelessWidget {
           // Route based on role
           if (state.user.role == 'admin') {
             return const AdminDashboard();
+          } else if (state.user.role == 'distributor') {
+            return const DistributorDashboard();
           } else {
             return const PartnerDashboard();
           }

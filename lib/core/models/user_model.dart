@@ -5,6 +5,7 @@ class UserModel {
   final String role; // 'admin', 'partner', 'distributor'
   final String? gstNumber;
   final bool isApproved;
+  final Map<String, double> customPrices;
 
   UserModel({
     required this.uid,
@@ -13,6 +14,7 @@ class UserModel {
     required this.role,
     this.gstNumber,
     this.isApproved = false,
+    this.customPrices = const {},
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -23,6 +25,9 @@ class UserModel {
       role: map['role'] ?? 'partner',
       gstNumber: map['gstNumber'],
       isApproved: map['isApproved'] ?? false,
+      customPrices: map['customPrices'] != null 
+          ? Map<String, double>.from(map['customPrices'].map((key, value) => MapEntry(key, (value as num).toDouble())))
+          : {},
     );
   }
 
@@ -33,6 +38,7 @@ class UserModel {
       'role': role,
       'gstNumber': gstNumber,
       'isApproved': isApproved,
+      'customPrices': customPrices,
     };
   }
 }

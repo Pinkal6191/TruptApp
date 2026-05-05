@@ -58,7 +58,9 @@ class InvoiceService {
               // Billed To
               pw.Text('Billed To:', style: pw.TextStyle(font: boldFont, fontSize: 14)),
               pw.SizedBox(height: 4),
-              pw.Text('Partner: ${order.partnerName}', style: pw.TextStyle(font: font, fontSize: 12)),
+              pw.Text('Shop: ${order.shopName}', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              pw.Text('Partner: ${order.partnerName}', style: pw.TextStyle(font: font, fontSize: 10)),
+              pw.Text('Contact: ${order.customerMobile}', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.SizedBox(height: 24),
 
               // Items Table
@@ -137,12 +139,12 @@ class InvoiceService {
 
   static pw.Widget _buildItemsTable(List<OrderItemModel> items, pw.Font font, pw.Font boldFont) {
     return pw.TableHelper.fromTextArray(
-      headers: ['Item Description', 'Qty', 'Unit Price', 'Amount'],
+      headers: ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Amount'],
       data: items.map((item) => [
         item.productName,
         item.quantity.toString(),
-        'Rs. ${item.unitPrice.toStringAsFixed(2)}',
-        'Rs. ${(item.quantity * item.unitPrice).toStringAsFixed(2)}',
+        'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
+        'Rs. ${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}',
       ]).toList(),
       headerStyle: pw.TextStyle(font: boldFont, color: PdfColors.white),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),

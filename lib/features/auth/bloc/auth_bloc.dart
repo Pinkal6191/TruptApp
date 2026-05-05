@@ -15,6 +15,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<SignupEvent>(_onSignupEvent);
     on<ForgotPasswordEvent>(_onForgotPasswordEvent);
     on<LogoutEvent>(_onLogoutEvent);
+    on<UpdateUserModel>((event, emit) => emit(Authenticated(event.user)));
   }
 
   Future<void> _onCheckAuthStatus(CheckAuthStatus event, Emitter<AuthState> emit) async {

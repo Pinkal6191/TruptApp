@@ -49,7 +49,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Order History'),
+        title: const Text('Order History v1.0.4'),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1E3A8A),
@@ -116,7 +116,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text('${item.quantity}x ${item.productName}'),
-                                  Text('₹${(item.quantity * item.unitPrice).toStringAsFixed(2)}'),
+                                  Text('₹${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}'),
                                 ],
                               ),
                             )),

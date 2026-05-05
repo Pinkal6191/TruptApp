@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/order_repository.dart';
 import 'order_event.dart';
@@ -5,14 +6,24 @@ import 'order_state.dart';
 
 class OrderBloc extends Bloc<OrderEvent, OrderState> {
   final OrderRepository _orderRepository;
+  StreamSubscription? _ordersSubscription;
 
   OrderBloc({required OrderRepository orderRepository})
       : _orderRepository = orderRepository,
         super(OrderInitial()) {
     on<LoadOrders>(_onLoadOrders);
+    on<LoadAllOrders>(_onLoadAllOrders);
+    on<WatchOrders>(_onWatchOrders);
+    on<OrdersUpdated>((event, emit) => emit(OrdersLoaded(orders: event.orders)));
+    on<ResetOrderState>(_onResetOrderState);
     on<CreateOrder>(_onCreateOrder);
     on<UpdateOrderStatus>(_onUpdateOrderStatus);
     on<UpdateOrderPayment>(_onUpdateOrderPayment);
+  }
+
+  void _onResetOrderState(ResetOrderState event, Emitter<OrderState> emit) {
+    _ordersSubscription?.cancel();
+    emit(OrderInitial());
   }
 
   Future<void> _onLoadOrders(LoadOrders event, Emitter<OrderState> emit) async {
@@ -28,6 +39,34 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
+  }
+  Future<void> _onLoadAllOrders(LoadAllOrders event, Emitter<OrderState> emit) async {
+    emit(OrderLoading());
+    try {
+      final orders = await _orderRepository.getAllOrders();
+      emit(OrdersLoaded(orders: orders));
+    } catch (e) {
+      emit(OrderError(message: e.toString()));
+    }
+  }
+
+  void _onWatchOrders(WatchOrders event, Emitter<OrderState> emit) {
+    emit(OrderLoading());
+    _ordersSubscription?.cancel();
+    final stream = event.userId != null 
+        ? _orderRepository.watchOrdersByUser(event.userId!) 
+        : _orderRepository.watchAllOrders();
+    
+    _ordersSubscription = stream.listen(
+      (orders) => add(OrdersUpdated(orders)),
+      onError: (error) => emit(OrderError(message: error.toString())),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _ordersSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onCreateOrder(CreateOrder event, Emitter<OrderState> emit) async {

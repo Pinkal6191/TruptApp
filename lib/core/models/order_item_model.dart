@@ -2,15 +2,17 @@ class OrderItemModel {
   final String productId;
   final String productName;
   final int quantity;
-  final double unitPrice; // Allow distributor to change
-  final double margin; // Margin for distributor
+  final double pricePerCrate; 
+  final double margin; // Legacy margin
+  final double distributorCost; // Tracks the purchase price for accurate commission
 
   OrderItemModel({
     required this.productId,
     required this.productName,
     required this.quantity,
-    required this.unitPrice,
+    required this.pricePerCrate,
     this.margin = 0.0,
+    this.distributorCost = 0.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -18,8 +20,9 @@ class OrderItemModel {
       'productId': productId,
       'productName': productName,
       'quantity': quantity,
-      'unitPrice': unitPrice,
+      'pricePerCrate': pricePerCrate,
       'margin': margin,
+      'distributorCost': distributorCost,
     };
   }
 
@@ -28,8 +31,9 @@ class OrderItemModel {
       productId: map['productId'] ?? '',
       productName: map['productName'] ?? '',
       quantity: (map['quantity'] ?? 0).toInt(),
-      unitPrice: (map['unitPrice'] ?? 0).toDouble(),
+      pricePerCrate: (map['pricePerCrate'] ?? map['unitPrice'] ?? 0).toDouble(), // Support legacy unitPrice
       margin: (map['margin'] ?? 0).toDouble(),
+      distributorCost: (map['distributorCost'] ?? 0).toDouble(),
     );
   }
 }

@@ -3,12 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ProductModel {
   final String id;
   final String name;
-  final double defaultPrice;
+  final int bottlesPerCrate;
+  final double retailPrice;
+  final double distributorPrice;
 
   ProductModel({
     required this.id,
     required this.name,
-    required this.defaultPrice,
+    required this.bottlesPerCrate,
+    required this.retailPrice,
+    required this.distributorPrice,
   });
 
   factory ProductModel.fromFirestore(DocumentSnapshot doc) {
@@ -16,14 +20,18 @@ class ProductModel {
     return ProductModel(
       id: doc.id,
       name: data['name'] ?? '',
-      defaultPrice: (data['defaultPrice'] ?? 0).toDouble(),
+      bottlesPerCrate: (data['bottlesPerCrate'] ?? 0).toInt(),
+      retailPrice: (data['retailPrice'] ?? 0).toDouble(),
+      distributorPrice: (data['distributorPrice'] ?? 0).toDouble(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'defaultPrice': defaultPrice,
+      'bottlesPerCrate': bottlesPerCrate,
+      'retailPrice': retailPrice,
+      'distributorPrice': distributorPrice,
     };
   }
 }

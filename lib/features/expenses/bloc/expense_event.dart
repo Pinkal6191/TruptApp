@@ -8,3 +8,5 @@ class AddExpense extends ExpenseEvent {
   final ExpenseModel expense;
   AddExpense({required this.expense});
 }
+
+class ResetExpenseState extends ExpenseEvent {}

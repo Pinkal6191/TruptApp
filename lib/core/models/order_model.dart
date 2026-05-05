@@ -4,7 +4,13 @@ import 'order_item_model.dart';
 class OrderModel {
   final String id;
   final String createdBy; // User UID
+  final String targetUserId; // UID of the receiver (if Admin supply) or customer
   final String partnerName;
+  final String shopName;
+  final String customerMobile;
+  final String creatorRole; // 'admin', 'partner', 'distributor'
+  final bool isInclusiveGST;
+  final bool isSupplyOrder; // True if Admin is supplying to Distributor
   final List<OrderItemModel> items;
   final double subtotal;
   final double gstAmount; // E.g. 18%
@@ -18,7 +24,13 @@ class OrderModel {
   OrderModel({
     required this.id,
     required this.createdBy,
+    required this.targetUserId,
     required this.partnerName,
+    required this.shopName,
+    required this.customerMobile,
+    required this.creatorRole,
+    this.isInclusiveGST = true,
+    this.isSupplyOrder = false,
     required this.items,
     required this.subtotal,
     required this.gstAmount,
@@ -33,7 +45,13 @@ class OrderModel {
   Map<String, dynamic> toMap() {
     return {
       'createdBy': createdBy,
+      'targetUserId': targetUserId,
       'partnerName': partnerName,
+      'shopName': shopName,
+      'customerMobile': customerMobile,
+      'creatorRole': creatorRole,
+      'isInclusiveGST': isInclusiveGST,
+      'isSupplyOrder': isSupplyOrder,
       'items': items.map((x) => x.toMap()).toList(),
       'subtotal': subtotal,
       'gstAmount': gstAmount,
@@ -51,7 +69,13 @@ class OrderModel {
     return OrderModel(
       id: doc.id,
       createdBy: map['createdBy'] ?? '',
+      targetUserId: map['targetUserId'] ?? '',
       partnerName: map['partnerName'] ?? 'Unknown Partner',
+      shopName: map['shopName'] ?? '',
+      customerMobile: map['customerMobile'] ?? '',
+      creatorRole: map['creatorRole'] ?? 'partner',
+      isInclusiveGST: map['isInclusiveGST'] ?? true,
+      isSupplyOrder: map['isSupplyOrder'] ?? false,
       items: List<OrderItemModel>.from(
         (map['items'] ?? []).map((x) => OrderItemModel.fromMap(x)),
       ),

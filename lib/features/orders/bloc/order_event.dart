@@ -7,6 +7,17 @@ class LoadOrders extends OrderEvent {
   LoadOrders({this.userId});
 }
 
+class LoadAllOrders extends OrderEvent {}
+class WatchOrders extends OrderEvent {
+  final String? userId;
+  WatchOrders({this.userId});
+}
+class OrdersUpdated extends OrderEvent {
+  final List<OrderModel> orders;
+  OrdersUpdated(this.orders);
+}
+class ResetOrderState extends OrderEvent {}
+
 class CreateOrder extends OrderEvent {
   final OrderModel order;
   CreateOrder({required this.order});
