@@ -226,22 +226,40 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ),
             
             
-            // Generate Invoice Button
+            // Generate Invoice Buttons
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Generate & Share Invoice'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: const Color(0xFF1E3A8A),
-                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf, size: 18),
+                    label: const Text('Bill (With GST)', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: const Color(0xFF1E3A8A),
+                      side: const BorderSide(color: Color(0xFF1E3A8A)),
+                    ),
+                    onPressed: () {
+                      InvoiceService.generateAndShareInvoice(widget.order, withGst: true);
+                    },
+                  ),
                 ),
-                onPressed: () {
-                  InvoiceService.generateAndShareInvoice(widget.order);
-                },
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf, size: 18),
+                    label: const Text('Bill (No GST)', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: Colors.teal,
+                      side: const BorderSide(color: Colors.teal),
+                    ),
+                    onPressed: () {
+                      InvoiceService.generateAndShareInvoice(widget.order, withGst: false);
+                    },
+                  ),
+                ),
+              ],
             ),
             
             // Admin Actions
