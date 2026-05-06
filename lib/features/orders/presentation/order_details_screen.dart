@@ -200,7 +200,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('GST (18%)', style: TextStyle(color: Colors.white70)),
+                        const Text('GST (5%)', style: TextStyle(color: Colors.white70)),
                         Text('₹${widget.order.gstAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
                       ],
                     ),
