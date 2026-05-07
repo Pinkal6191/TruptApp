@@ -11,9 +11,16 @@ class OrderRepository {
     try {
       await _firestore.collection(collectionName).add(order.toMap());
       
-      // If a distributor is creating an order (Selling to Partner), decrease their stock immediately?
-      // Or should it wait for Delivery?
-      // User said: "stock reflect after delivery complete"
+      // Stock Maintenance at creation (When Bill is Generated)
+      for (var item in order.items) {
+        if (order.creatorRole == 'distributor') {
+          // Distributor selling to Retailer -> Decrease Distributor's stock immediately
+          await _inventoryRepository.updateStock(order.createdBy, item.productId, item.productName, -item.quantity);
+        } else if (order.creatorRole == 'admin' && order.isSupplyOrder) {
+          // Admin supplying to Distributor -> Increase Distributor's stock immediately
+          await _inventoryRepository.updateStock(order.targetUserId, item.productId, item.productName, item.quantity);
+        }
+      }
     } catch (e) {
       throw Exception('Failed to create order: $e');
     }
@@ -78,28 +85,7 @@ class OrderRepository {
 
   Future<void> updateOrderStatus(String orderId, String statusType, String newStatus) async {
     try {
-      final docRef = _firestore.collection(collectionName).doc(orderId);
-      final snapshot = await docRef.get();
-      if (!snapshot.exists) return;
-      
-      final order = OrderModel.fromFirestore(snapshot);
-      final oldStatus = statusType == 'deliveryStatus' ? order.deliveryStatus : '';
-
-      await docRef.update({statusType: newStatus});
-
-      // Handle Stock Logic on Delivery
-      if (statusType == 'deliveryStatus' && newStatus == 'Delivered' && oldStatus != 'Delivered') {
-        for (var item in order.items) {
-          if (order.creatorRole == 'distributor') {
-            // Distributor selling to Retailer -> Decrease Distributor's stock
-            await _inventoryRepository.updateStock(order.createdBy, item.productId, item.productName, -item.quantity);
-          } else if (order.creatorRole == 'admin' && order.isSupplyOrder) {
-            // Admin supplying to Distributor -> Increase Distributor's stock
-            // In this case, targetUserId is the Distributor's UID
-            await _inventoryRepository.updateStock(order.targetUserId, item.productId, item.productName, item.quantity);
-          }
-        }
-      }
+      await _firestore.collection(collectionName).doc(orderId).update({statusType: newStatus});
     } catch (e) {
       throw Exception('Failed to update order status: $e');
     }

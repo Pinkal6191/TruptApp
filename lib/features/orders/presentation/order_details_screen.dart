@@ -103,7 +103,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAdmin = (context.read<AuthBloc>().state as Authenticated).user.role == 'admin';
+    final authState = context.read<AuthBloc>().state as Authenticated;
+    final bool isAdmin = authState.user.role == 'admin';
+    final bool isDistributor = authState.user.role == 'distributor';
+    final bool isCreator = authState.user.uid == widget.order.createdBy;
+    final bool canManage = isAdmin || (isDistributor && isCreator);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -131,7 +135,42 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     Text('Partner: ${widget.order.partnerName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text('Date: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.order.createdAt)}', style: const TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    if (widget.order.invoiceNumber.isNotEmpty)
+                      Text('Invoice No: ${widget.order.invoiceNumber}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                     const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    if (widget.order.shopName.isNotEmpty) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Shop/Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(widget.order.shopName),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Mobile', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(widget.order.customerMobile.isEmpty ? 'N/A' : widget.order.customerMobile),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget.order.customerAddress.isNotEmpty) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Address', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 16),
+                          Expanded(child: Text(widget.order.customerAddress, textAlign: TextAlign.right)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     const Divider(),
                     const SizedBox(height: 16),
                     Row(
@@ -270,10 +309,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ],
             ),
             
-            // Admin Actions
-            if (isAdmin) ...[
+            // Order Actions
+            if (canManage) ...[
               const SizedBox(height: 32),
-              const Text('Admin Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+              const Text('Order Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
               const SizedBox(height: 12),
               Row(
                 children: [
