@@ -5,6 +5,7 @@ class UserModel {
   final String role; // 'admin', 'partner', 'distributor'
   final String? gstNumber;
   final bool isApproved;
+  final bool isActive;
   final Map<String, double> customPrices;
 
   UserModel({
@@ -14,6 +15,7 @@ class UserModel {
     required this.role,
     this.gstNumber,
     this.isApproved = false,
+    this.isActive = true,
     this.customPrices = const {},
   });
 
@@ -25,6 +27,7 @@ class UserModel {
       role: map['role'] ?? 'partner',
       gstNumber: map['gstNumber'],
       isApproved: map['isApproved'] ?? false,
+      isActive: map['isActive'] ?? true,
       customPrices: map['customPrices'] != null 
           ? Map<String, double>.from(map['customPrices'].map((key, value) => MapEntry(key, (value as num).toDouble())))
           : {},
@@ -38,6 +41,7 @@ class UserModel {
       'role': role,
       'gstNumber': gstNumber,
       'isApproved': isApproved,
+      'isActive': isActive,
       'customPrices': customPrices,
     };
   }

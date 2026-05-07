@@ -26,7 +26,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final userDoc = await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
           final userModel = UserModel.fromMap(userDoc.data()!, userDoc.id);
-          if (userModel.role != 'admin' && !userModel.isApproved) {
+          if (!userModel.isActive) {
+            await _firebaseAuth.signOut();
+            emit(const AuthError('Your account has been deactivated. Please contact admin.'));
+          } else if (userModel.role != 'admin' && !userModel.isApproved) {
             emit(AuthApprovalPending());
           } else {
             emit(Authenticated(userModel));
@@ -53,7 +56,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
       if (userDoc.exists) {
         final userModel = UserModel.fromMap(userDoc.data()!, userDoc.id);
-        if (userModel.role != 'admin' && !userModel.isApproved) {
+        if (!userModel.isActive) {
+          await _firebaseAuth.signOut();
+          emit(const AuthError('Your account has been deactivated. Please contact admin.'));
+        } else if (userModel.role != 'admin' && !userModel.isApproved) {
           emit(AuthApprovalPending());
         } else {
           emit(Authenticated(userModel));

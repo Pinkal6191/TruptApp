@@ -16,9 +16,9 @@ import '../../expenses/bloc/expense_bloc.dart';
 import '../../expenses/bloc/expense_event.dart';
 import '../../expenses/bloc/expense_state.dart';
 import '../../expenses/presentation/expense_management_screen.dart';
-import 'user_approval_screen.dart';
 import 'product_management_screen.dart';
 import 'admin_reports_screen.dart';
+import 'user_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -161,11 +161,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Card(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: ListTile(
-                    leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.how_to_reg, color: Colors.white)),
+                    leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.people, color: Colors.white)),
                     title: const Text('User Management'),
-                    subtitle: const Text('Approve new partners/distributors'),
+                    subtitle: const Text('Manage roles, approvals, and accounts'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserApprovalScreen())),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
                   ),
                 ),
                 const SizedBox(height: 12),

@@ -30,4 +30,30 @@ class UserRepository {
       throw Exception('Failed to update custom prices: $e');
     }
   }
+
+  Future<void> updateUser(UserModel user) async {
+    try {
+      await _firestore.collection('users').doc(user.uid).update(user.toMap());
+    } catch (e) {
+      throw Exception('Failed to update user: $e');
+    }
+  }
+
+  Future<void> deleteUser(String userId) async {
+    try {
+      await _firestore.collection('users').doc(userId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete user: $e');
+    }
+  }
+
+  Future<void> toggleUserStatus(String userId, bool isActive) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'isActive': isActive,
+      });
+    } catch (e) {
+      throw Exception('Failed to toggle user status: $e');
+    }
+  }
 }
