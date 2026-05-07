@@ -102,14 +102,17 @@ class OrderRepository {
     }
   }
 
-  Future<String> generateInvoiceNumber(bool isSupplyOrder) async {
+  Future<String> generateInvoiceNumber(bool isSupplyOrder, String creatorRole) async {
     try {
       final snapshot = await _firestore.collection(collectionName).get();
       int count = 0;
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final bool docIsSupply = data['isSupplyOrder'] ?? false;
-        if (docIsSupply == isSupplyOrder) {
+        final String docRole = data['creatorRole'] ?? 'partner';
+        
+        // Count based on both supply type and creator role to maintain separate sequences
+        if (docIsSupply == isSupplyOrder && docRole == creatorRole) {
           count++;
         }
       }
@@ -118,9 +121,11 @@ class OrderRepository {
       final formattedNumber = nextNumber.toString().padLeft(2, '0');
       
       if (isSupplyOrder) {
-        return 'd-$formattedNumber';
+        return 'S-$formattedNumber'; // S for Supply (Admin to Distributor)
+      } else if (creatorRole == 'distributor') {
+        return 'D$formattedNumber'; // D for Distributor sale
       } else {
-        return formattedNumber;
+        return formattedNumber; // Default/Partner sale
       }
     } catch (e) {
       // Fallback if counting fails

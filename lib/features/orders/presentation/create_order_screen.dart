@@ -190,7 +190,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     
     String invoiceNumber = '';
     try {
-      invoiceNumber = await _orderRepository.generateInvoiceNumber(isSupply);
+      invoiceNumber = await _orderRepository.generateInvoiceNumber(isSupply, userRole);
     } catch (e) {
       invoiceNumber = DateTime.now().millisecondsSinceEpoch.toString().substring(5);
     }
