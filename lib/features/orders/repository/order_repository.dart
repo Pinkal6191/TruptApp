@@ -109,10 +109,10 @@ class OrderRepository {
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final bool docIsSupply = data['isSupplyOrder'] ?? false;
-        final String docRole = data['creatorRole'] ?? 'partner';
+        final String docRole = (data['creatorRole'] ?? 'partner').toString().toLowerCase();
         
         // Count based on both supply type and creator role to maintain separate sequences
-        if (docIsSupply == isSupplyOrder && docRole == creatorRole) {
+        if (docIsSupply == isSupplyOrder && docRole == creatorRole.toLowerCase()) {
           count++;
         }
       }
@@ -122,7 +122,7 @@ class OrderRepository {
       
       if (isSupplyOrder) {
         return 'S-$formattedNumber'; // S for Supply (Admin to Distributor)
-      } else if (creatorRole == 'distributor') {
+      } else if (creatorRole.toLowerCase() == 'distributor') {
         return 'D$formattedNumber'; // D for Distributor sale
       } else {
         return formattedNumber; // Default/Partner sale
