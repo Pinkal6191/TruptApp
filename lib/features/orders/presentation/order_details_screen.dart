@@ -192,7 +192,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Subtotal', style: TextStyle(color: Colors.white70)),
+                        const Text('Taxable Value', style: TextStyle(color: Colors.white70)),
                         Text('₹${widget.order.subtotal.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
                       ],
                     ),
@@ -200,8 +200,16 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('GST (5%)', style: TextStyle(color: Colors.white70)),
-                        Text('₹${widget.order.gstAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
+                        const Text('SGST (2.5%)', style: TextStyle(color: Colors.white70)),
+                        Text('₹${(widget.order.gstAmount / 2).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('CGST (2.5%)', style: TextStyle(color: Colors.white70)),
+                        Text('₹${(widget.order.gstAmount / 2).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
                       ],
                     ),
                     const Divider(color: Colors.white30, height: 24),

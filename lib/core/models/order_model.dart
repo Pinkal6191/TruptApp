@@ -8,6 +8,9 @@ class OrderModel {
   final String partnerName;
   final String shopName;
   final String customerMobile;
+  final String customerAddress;
+  final String customerGstNumber;
+  final String invoiceNumber;
   final String creatorRole; // 'admin', 'partner', 'distributor'
   final bool isInclusiveGST;
   final bool isSupplyOrder; // True if Admin is supplying to Distributor
@@ -28,6 +31,9 @@ class OrderModel {
     required this.partnerName,
     required this.shopName,
     required this.customerMobile,
+    this.customerAddress = '',
+    this.customerGstNumber = '',
+    this.invoiceNumber = '',
     required this.creatorRole,
     this.isInclusiveGST = true,
     this.isSupplyOrder = false,
@@ -49,6 +55,9 @@ class OrderModel {
       'partnerName': partnerName,
       'shopName': shopName,
       'customerMobile': customerMobile,
+      'customerAddress': customerAddress,
+      'customerGstNumber': customerGstNumber,
+      'invoiceNumber': invoiceNumber,
       'creatorRole': creatorRole,
       'isInclusiveGST': isInclusiveGST,
       'isSupplyOrder': isSupplyOrder,
@@ -73,6 +82,9 @@ class OrderModel {
       partnerName: map['partnerName'] ?? 'Unknown Partner',
       shopName: map['shopName'] ?? '',
       customerMobile: map['customerMobile'] ?? '',
+      customerAddress: map['customerAddress'] ?? '',
+      customerGstNumber: map['customerGstNumber'] ?? '',
+      invoiceNumber: map['invoiceNumber'] ?? '',
       creatorRole: map['creatorRole'] ?? 'partner',
       isInclusiveGST: map['isInclusiveGST'] ?? true,
       isSupplyOrder: map['isSupplyOrder'] ?? false,

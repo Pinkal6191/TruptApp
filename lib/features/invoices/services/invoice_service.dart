@@ -31,8 +31,11 @@ class InvoiceService {
       printGst = order.finalAmount - printSubtotal;
     }
 
-    // Invoice number formatting: ddmmyyyyhhmmss
-    final String invNo = DateFormat('ddMMyyyyHHmmss').format(order.createdAt);
+    // Invoice number formatting: ddmmyyyyhhmmss fallback for old orders
+    String invNo = order.invoiceNumber;
+    if (invNo.isEmpty) {
+      invNo = DateFormat('ddMMyyyyHHmmss').format(order.createdAt);
+    }
 
     pdf.addPage(
       pw.Page(
@@ -63,7 +66,7 @@ class InvoiceService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('INVOICE', style: pw.TextStyle(font: boldFont, fontSize: 28, color: PdfColors.blue800)),
+                      pw.Text('TAX INVOICE', style: pw.TextStyle(font: boldFont, fontSize: 28, color: PdfColors.blue800)),
                       pw.SizedBox(height: 4),
                       pw.Text('Date: ${DateFormat('dd MMM yyyy').format(order.createdAt)}', style: pw.TextStyle(font: font)),
                       pw.Text('Invoice No: $invNo', style: pw.TextStyle(font: font)),
@@ -77,7 +80,11 @@ class InvoiceService {
               pw.Text('Billed To:', style: pw.TextStyle(font: boldFont, fontSize: 14)),
               pw.SizedBox(height: 4),
               pw.Text('Shop/Customer: ${order.shopName.isEmpty ? order.partnerName : order.shopName}', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+              if (order.customerAddress.isNotEmpty)
+                pw.Text('Address: ${order.customerAddress}', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.Text('Contact: ${order.customerMobile}', style: pw.TextStyle(font: font, fontSize: 10)),
+              if (order.customerGstNumber.isNotEmpty && order.customerGstNumber != 'URP')
+                pw.Text('GST No: ${order.customerGstNumber}', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.SizedBox(height: 24),
 
               // Items Table
@@ -93,9 +100,11 @@ class InvoiceService {
                     child: pw.Column(
                       children: [
                         if (withGst) ...[
-                          _buildTotalRow('Subtotal:', printSubtotal, font),
+                          _buildTotalRow('Taxable Value:', printSubtotal, font),
                           pw.SizedBox(height: 4),
-                          _buildTotalRow('GST (5%):', printGst, font),
+                          _buildTotalRow('SGST (2.5%):', printGst / 2, font),
+                          pw.SizedBox(height: 4),
+                          _buildTotalRow('CGST (2.5%):', printGst / 2, font),
                           pw.Divider(),
                         ],
                         _buildTotalRow('Total Amount:', order.finalAmount, boldFont, isTotal: true),
@@ -128,9 +137,9 @@ class InvoiceService {
                       pw.Text('IFSC Code : AUBL0004101', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.Text('UPI ID : truptenterprise2644@aubank', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.SizedBox(height: 16),
-                      pw.Text('Terms & Conditions:', style: pw.TextStyle(font: boldFont, fontSize: 10)),
-                      pw.Text('1. Payment is due upon receipt.', style: pw.TextStyle(font: font, fontSize: 8)),
-                      pw.Text('2. Subject to Anand Jurisdiction.', style: pw.TextStyle(font: font, fontSize: 8)),
+                      pw.Text('Terms & Conditions:', style: pw.TextStyle(font: boldFont, fontSize: 12)),
+                      pw.Text('1. Payment is due upon receipt.', style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('2. All disputes are subject to local jurisdiction.', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.SizedBox(height: 16),
                       pw.Text('Thank you for your business!', style: pw.TextStyle(font: boldFont, fontSize: 12, color: PdfColors.blue900)),
                     ],
@@ -154,6 +163,10 @@ class InvoiceService {
                     ],
                   ),
                 ],
+              ),
+              pw.SizedBox(height: 24),
+              pw.Center(
+                child: pw.Text('Subject to Anand Jurisdiction', style: pw.TextStyle(font: boldFont, fontSize: 12, color: PdfColors.blue900)),
               ),
             ],
           );

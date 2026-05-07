@@ -115,4 +115,30 @@ class OrderRepository {
       throw Exception('Failed to update payment: $e');
     }
   }
+
+  Future<String> generateInvoiceNumber(bool isSupplyOrder) async {
+    try {
+      final snapshot = await _firestore.collection(collectionName).get();
+      int count = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final bool docIsSupply = data['isSupplyOrder'] ?? false;
+        if (docIsSupply == isSupplyOrder) {
+          count++;
+        }
+      }
+      
+      final nextNumber = count + 1;
+      final formattedNumber = nextNumber.toString().padLeft(2, '0');
+      
+      if (isSupplyOrder) {
+        return 'd-$formattedNumber';
+      } else {
+        return formattedNumber;
+      }
+    } catch (e) {
+      // Fallback if counting fails
+      return DateTime.now().millisecondsSinceEpoch.toString().substring(5);
+    }
+  }
 }

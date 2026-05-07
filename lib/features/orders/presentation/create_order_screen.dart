@@ -11,6 +11,7 @@ import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
 import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
+import '../repository/order_repository.dart';
 import '../../admin/repository/user_repository.dart';
 
 class CreateOrderScreen extends StatefulWidget {
@@ -25,8 +26,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final double gstRate = 0.05; // 5% GST (Included in price)
   final _shopNameController = TextEditingController();
   final _mobileController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _gstController = TextEditingController();
   
   final UserRepository _userRepository = UserRepository();
+  final OrderRepository _orderRepository = OrderRepository();
   List<UserModel> _distributors = [];
   UserModel? _selectedDistributor;
   bool _isLoadingUsers = false;
@@ -57,6 +61,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   void dispose() {
     _shopNameController.dispose();
     _mobileController.dispose();
+    _addressController.dispose();
+    _gstController.dispose();
     super.dispose();
   }
 
@@ -149,7 +155,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  void _submitOrder(String uid, String userName, String userRole) {
+  Future<void> _submitOrder(String uid, String userName, String userRole) async {
     if (_cart.isEmpty) return;
     
     String targetUid = uid;
@@ -179,6 +185,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     double subtotal = totalWithGst / (1 + gstRate);
     double gstAmount = totalWithGst - subtotal;
 
+    // Show loading
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    
+    String invoiceNumber = '';
+    try {
+      invoiceNumber = await _orderRepository.generateInvoiceNumber(isSupply);
+    } catch (e) {
+      invoiceNumber = DateTime.now().millisecondsSinceEpoch.toString().substring(5);
+    }
+    
+    // Remove loading dialog
+    if (context.mounted) Navigator.pop(context);
+
+    String customerGst = _gstController.text.trim();
+    if (customerGst.isEmpty) customerGst = 'URP';
+
     final order = OrderModel(
       id: '',
       createdBy: uid,
@@ -186,6 +208,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       partnerName: displayPartnerName,
       shopName: _shopNameController.text.trim(),
       customerMobile: _mobileController.text.trim(),
+      customerAddress: _addressController.text.trim(),
+      customerGstNumber: customerGst,
+      invoiceNumber: invoiceNumber,
       creatorRole: userRole,
       isInclusiveGST: true,
       isSupplyOrder: isSupply,
@@ -363,21 +388,43 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   Widget _buildCustomerForm() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: TextField(
-            controller: _shopNameController,
-            decoration: const InputDecoration(labelText: 'Shop Name', border: OutlineInputBorder(), isDense: true),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _shopNameController,
+                decoration: const InputDecoration(labelText: 'Shop Name / Customer', border: OutlineInputBorder(), isDense: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _mobileController,
+                decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
+                keyboardType: TextInputType.phone,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextField(
-            controller: _mobileController,
-            decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
-            keyboardType: TextInputType.phone,
-          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _gstController,
+                decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -397,6 +444,24 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           items: _distributors.map((u) => DropdownMenuItem(value: u, child: Text(u.name))).toList(),
           onChanged: (val) => setState(() => _selectedDistributor = val),
           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _gstController,
+                decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
+              ),
+            ),
+          ],
         ),
       ],
     );
