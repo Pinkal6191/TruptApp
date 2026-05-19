@@ -22,6 +22,7 @@ import 'user_management_screen.dart';
 import 'customer_list_screen.dart';
 import '../../../core/services/database_maintenance_service.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
+import '../../../core/widgets/regular_customers_graph.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_state.dart';
 
@@ -126,6 +127,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
 
                 const Text(
+                  'Network Coverage & Summary',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance.collection('customers').snapshots(),
+                        builder: (context, snapshot) {
+                          final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                          return _buildSummaryIndicatorCard('Customers', '$count Covered', Icons.groups, Colors.purple);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'distributor')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                          return _buildSummaryIndicatorCard('Distributors', '$count Active', Icons.store, Colors.teal);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'partner')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                          return _buildSummaryIndicatorCard('Partners', '$count Active', Icons.handshake, Colors.indigo);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+
+                const Text(
                   'Quick Actions',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
@@ -192,7 +239,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, orderState) {
                     if (orderState is OrdersLoaded) {
-                      return SalesTrendGraph(orders: orderState.orders);
+                      return Column(
+                        children: [
+                          SalesTrendGraph(orders: orderState.orders),
+                          const SizedBox(height: 16),
+                          RegularCustomersGraph(orders: orderState.orders),
+                        ],
+                      );
                     }
                     return const Card(
                       child: Padding(
@@ -418,5 +471,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error wiping data: $e'), backgroundColor: Colors.red));
       }
     }
+  }
+
+  Widget _buildSummaryIndicatorCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 }
