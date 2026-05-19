@@ -104,20 +104,26 @@ class OrderRepository {
 
   Future<String> generateInvoiceNumber(bool isSupplyOrder, String creatorRole) async {
     try {
-      final snapshot = await _firestore.collection(collectionName).get();
-      int count = 0;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final bool docIsSupply = data['isSupplyOrder'] ?? false;
-        final String docRole = (data['creatorRole'] ?? 'partner').toString().toLowerCase();
-        
-        // Count based on both supply type and creator role to maintain separate sequences
-        if (docIsSupply == isSupplyOrder && docRole == creatorRole.toLowerCase()) {
-          count++;
-        }
-      }
+      final String counterId = isSupplyOrder 
+          ? 'supply' 
+          : (creatorRole.toLowerCase() == 'distributor' ? 'distributor' : 'partner');
       
-      final nextNumber = count + 1;
+      final DocumentReference counterRef = _firestore.collection('metadata').doc('invoice_counters');
+      
+      final nextNumber = await _firestore.runTransaction<int>((transaction) async {
+        final snapshot = await transaction.get(counterRef);
+        int currentCount = 0;
+        if (snapshot.exists) {
+          final data = snapshot.data() as Map<String, dynamic>?;
+          if (data != null) {
+            currentCount = data[counterId] ?? 0;
+          }
+        }
+        final nextCount = currentCount + 1;
+        transaction.set(counterRef, {counterId: nextCount}, SetOptions(merge: true));
+        return nextCount;
+      });
+
       final formattedNumber = nextNumber.toString().padLeft(2, '0');
       
       if (isSupplyOrder) {
@@ -128,7 +134,7 @@ class OrderRepository {
         return formattedNumber; // Default/Partner sale
       }
     } catch (e) {
-      // Fallback if counting fails
+      // Fallback if transaction fails
       return DateTime.now().millisecondsSinceEpoch.toString().substring(5);
     }
   }

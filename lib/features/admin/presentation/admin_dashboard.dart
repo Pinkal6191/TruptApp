@@ -19,6 +19,11 @@ import '../../expenses/presentation/expense_management_screen.dart';
 import 'product_management_screen.dart';
 import 'admin_reports_screen.dart';
 import 'user_management_screen.dart';
+import 'customer_list_screen.dart';
+import '../../../core/services/database_maintenance_service.dart';
+import '../../../core/widgets/sales_trend_graph.dart';
+import '../../orders/bloc/order_bloc.dart';
+import '../../orders/bloc/order_state.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -134,6 +139,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 
                 const SizedBox(height: 24),
                 const Text(
+                  'Sales Analytics',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                BlocBuilder<OrderBloc, OrderState>(
+                  builder: (context, orderState) {
+                    if (orderState is OrdersLoaded) {
+                      return SalesTrendGraph(orders: orderState.orders);
+                    }
+                    return const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 24),
+                const Text(
                   'System Health',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
@@ -161,6 +186,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Card(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.purple, child: Icon(Icons.recent_actors, color: Colors.white)),
+                    title: const Text('Customer Directory'),
+                    subtitle: const Text('View repeat customers and export list'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerListScreen())),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
                     leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.people, color: Colors.white)),
                     title: const Text('User Management'),
                     subtitle: const Text('Manage roles, approvals, and accounts'),
@@ -179,7 +215,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     onTap: () => _showMigrationDialog(context),
                   ),
                 ),
-                
+                const SizedBox(height: 12),
+                Card(
+                  color: Colors.red.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.red, child: Icon(Icons.delete_forever, color: Colors.white)),
+                    title: const Text('Factory Reset (Wipe Data)', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Deletes all orders, customers, and partner accounts for live deployment', style: TextStyle(color: Colors.red)),
+                    trailing: const Icon(Icons.warning, color: Colors.red),
+                    onTap: () => _showWipeDataDialog(context),
+                  ),
+                ),
                 const SizedBox(height: 32),
               ],
             ),
@@ -255,6 +305,72 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Migration complete! Updated $count orders.'), backgroundColor: Colors.green));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Migration failed: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  void _showWipeDataDialog(BuildContext context) {
+    String confirmationText = '';
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('⚠️ DANGER: WIPE ALL DATA', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('This action will permanently delete all Orders, Customers, and Non-Admin Users. Products and the Admin account will remain.'),
+                  const SizedBox(height: 16),
+                  const Text('Type "WIPE ALL DATA" below to confirm:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    onChanged: (val) {
+                      setDialogState(() {
+                        confirmationText = val;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'WIPE ALL DATA',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  onPressed: confirmationText == 'WIPE ALL DATA' ? () {
+                    Navigator.pop(context);
+                    _executeWipe();
+                  } : null,
+                  child: const Text('PERMANENTLY DELETE'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Future<void> _executeWipe() async {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wiping data... Please wait.')));
+    try {
+      final service = DatabaseMaintenanceService();
+      await service.wipeAllDataExceptAdminAndProducts();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data wipe successful. App is ready for live use.'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error wiping data: $e'), backgroundColor: Colors.red));
+      }
     }
   }
 }

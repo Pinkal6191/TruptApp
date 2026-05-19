@@ -13,6 +13,11 @@ import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
 import '../repository/order_repository.dart';
 import '../../admin/repository/user_repository.dart';
+import '../../customers/bloc/customer_bloc.dart';
+import '../../customers/bloc/customer_event.dart';
+import '../../customers/bloc/customer_state.dart';
+import '../../../core/models/customer_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -24,10 +29,11 @@ class CreateOrderScreen extends StatefulWidget {
 class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final List<OrderItemModel> _cart = [];
   final double gstRate = 0.05; // 5% GST (Included in price)
-  final _shopNameController = TextEditingController();
+  TextEditingController _shopNameController = TextEditingController();
   final _mobileController = TextEditingController();
   final _addressController = TextEditingController();
   final _gstController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
   
   final UserRepository _userRepository = UserRepository();
   final OrderRepository _orderRepository = OrderRepository();
@@ -39,7 +45,39 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   void initState() {
     super.initState();
     context.read<ProductBloc>().add(LoadProducts());
+    context.read<CustomerBloc>().add(LoadCustomers());
     _loadDistributors();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Widget _buildDateSelector() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: Row(
+        children: [
+          const Text('Order Date: ', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}'),
+          IconButton(
+            icon: const Icon(Icons.calendar_today, size: 20, color: Colors.blue),
+            onPressed: () => _selectDate(context),
+            tooltip: 'Select Date',
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadDistributors() async {
@@ -219,10 +257,42 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       gstAmount: gstAmount,
       discount: 0,
       finalAmount: totalWithGst,
-      createdAt: DateTime.now(),
+      createdAt: _selectedDate,
     );
 
     context.read<OrderBloc>().add(CreateOrder(order: order));
+    
+    // CUSTOMER MANAGEMENT LOGIC
+    if (!isSupply) {
+      final customerBloc = context.read<CustomerBloc>();
+      final state = customerBloc.state;
+      if (state is CustomersLoaded) {
+        CustomerModel? existingCustomer;
+        try {
+          existingCustomer = state.customers.firstWhere((c) => c.shopName.toLowerCase() == order.shopName.toLowerCase());
+        } catch (e) {
+          existingCustomer = null;
+        }
+
+        if (existingCustomer != null) {
+          customerBloc.add(UpdateCustomerMetrics(existingCustomer.id, order.finalAmount));
+        } else {
+          final newCustomer = CustomerModel(
+            id: FirebaseFirestore.instance.collection('customers').doc().id,
+            shopName: order.shopName,
+            mobileNumber: order.customerMobile,
+            address: order.customerAddress,
+            gstNumber: order.customerGstNumber,
+            partnerId: uid,
+            totalOrders: 1,
+            totalAmountSpent: order.finalAmount,
+            createdAt: DateTime.now(),
+          );
+          customerBloc.add(AddCustomer(newCustomer));
+        }
+      }
+    }
+
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Order created successfully!'), backgroundColor: Colors.green),
@@ -393,9 +463,40 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _shopNameController,
-                decoration: const InputDecoration(labelText: 'Shop Name / Customer', border: OutlineInputBorder(), isDense: true),
+              child: BlocBuilder<CustomerBloc, CustomerState>(
+                builder: (context, state) {
+                  List<CustomerModel> customers = [];
+                  if (state is CustomersLoaded) {
+                    customers = state.customers;
+                  }
+                  return Autocomplete<CustomerModel>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return const Iterable<CustomerModel>.empty();
+                      }
+                      return customers.where((CustomerModel customer) {
+                        return customer.shopName.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    displayStringForOption: (CustomerModel option) => option.shopName,
+                    onSelected: (CustomerModel selection) {
+                      _mobileController.text = selection.mobileNumber;
+                      _addressController.text = selection.address;
+                      _gstController.text = selection.gstNumber;
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      _shopNameController = controller;
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(labelText: 'Shop Name / Customer', border: OutlineInputBorder(), isDense: true),
+                        onSubmitted: (String value) {
+                          onFieldSubmitted();
+                        },
+                      );
+                    },
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),
@@ -426,6 +527,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ],
         ),
+        _buildDateSelector(),
       ],
     );
   }
@@ -463,6 +565,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ],
         ),
+        _buildDateSelector(),
       ],
     );
   }

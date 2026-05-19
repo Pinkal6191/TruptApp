@@ -50,7 +50,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Order History v1.0.4'),
+        title: const Text('Order History'),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1E3A8A),
@@ -60,7 +60,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           if (state is OrderLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is OrdersLoaded) {
-            if (state.orders.isEmpty) {
+            final sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            if (sortedOrders.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -78,9 +79,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
             final authState = context.read<AuthBloc>().state;
             if (authState is Authenticated && authState.user.role == 'admin') {
-              return _buildAdminView(state.orders);
+              return _buildAdminView(sortedOrders);
             }
-            return _buildStandardView(state.orders);
+            return _buildStandardView(sortedOrders);
           } else if (state is OrderError) {
              return Center(child: Text('Error: ${state.message}', style: const TextStyle(color: Colors.red)));
           }
@@ -114,7 +115,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      order.partnerName,
+                      order.shopName.isNotEmpty ? order.shopName : order.partnerName,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                     Text(
@@ -185,6 +186,35 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ],
                 ),
+                if (order.deliveryStatus != 'Delivered' || order.paymentStatus != 'Paid') ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (order.deliveryStatus != 'Delivered')
+                        TextButton.icon(
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
+                          onPressed: () {
+                            context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered'));
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
+                          },
+                        ),
+                      if (order.paymentStatus != 'Paid')
+                        TextButton.icon(
+                          icon: const Icon(Icons.payments_outlined, size: 16),
+                          label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
+                          onPressed: () {
+                            context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid'));
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
+                          },
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

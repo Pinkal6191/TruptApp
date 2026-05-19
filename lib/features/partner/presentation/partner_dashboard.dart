@@ -7,11 +7,12 @@ import '../../orders/presentation/create_order_screen.dart';
 import '../../orders/presentation/order_history_screen.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
-import '../../products/bloc/product_state.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../orders/bloc/order_state.dart';
 import '../../products/presentation/custom_price_screen.dart';
+import '../../../core/models/order_model.dart';
+import '../../../core/widgets/sales_trend_graph.dart';
 
 class PartnerDashboard extends StatefulWidget {
   const PartnerDashboard({super.key});
@@ -72,15 +73,25 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   builder: (context, state) {
                     double totalOrders = 0;
                     double pendingPayment = 0;
+                    List<OrderModel> partnerOrders = [];
                     if (state is OrdersLoaded) {
+                      partnerOrders = state.orders;
                       totalOrders = state.orders.fold(0, (sum, o) => sum + o.finalAmount);
                       pendingPayment = state.orders.fold(0, (sum, o) => sum + (o.finalAmount - o.paidAmount));
                     }
-                    return Row(
+                    return Column(
                       children: [
-                        _summaryCard('Total Orders', '₹${totalOrders.toStringAsFixed(0)}', Icons.shopping_bag, Colors.blue),
-                        const SizedBox(width: 16),
-                        _summaryCard('Pending', '₹${pendingPayment.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange),
+                        Row(
+                          children: [
+                            _summaryCard('Total Orders', '₹${totalOrders.toStringAsFixed(0)}', Icons.shopping_bag, Colors.blue),
+                            const SizedBox(width: 16),
+                            _summaryCard('Pending', '₹${pendingPayment.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange),
+                          ],
+                        ),
+                        if (partnerOrders.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          SalesTrendGraph(orders: partnerOrders),
+                        ],
                       ],
                     );
                   },

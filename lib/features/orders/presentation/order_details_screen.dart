@@ -105,9 +105,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Widget build(BuildContext context) {
     final authState = context.read<AuthBloc>().state as Authenticated;
     final bool isAdmin = authState.user.role == 'admin';
-    final bool isDistributor = authState.user.role == 'distributor';
     final bool isCreator = authState.user.uid == widget.order.createdBy;
-    final bool canManage = isAdmin || (isDistributor && isCreator);
+    final bool canManage = isAdmin || isCreator;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
