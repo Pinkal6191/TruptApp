@@ -20,7 +20,8 @@ import '../../../core/models/customer_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CreateOrderScreen extends StatefulWidget {
-  const CreateOrderScreen({super.key});
+  final bool isRetailOrder;
+  const CreateOrderScreen({super.key, this.isRetailOrder = false});
 
   @override
   State<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -209,20 +210,38 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String finalReference = 'Direct (Online / Call)';
 
     if (userRole == 'admin') {
-      if (_selectedDistributor == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Distributor')));
-        return;
-      }
-      targetUid = _selectedDistributor!.uid;
-      displayPartnerName = _selectedDistributor!.name;
-      isSupply = true;
-
-      if (_selectedReferenceType == 'Partner Referral') {
-        if (_selectedPartnerReference == null) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
+      if (widget.isRetailOrder) {
+        if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name and Mobile Number')));
           return;
         }
-        finalReference = _selectedPartnerReference!.name;
+        isSupply = false;
+        targetUid = uid;
+        displayPartnerName = userName;
+        
+        if (_selectedReferenceType == 'Partner Referral') {
+          if (_selectedPartnerReference == null) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
+            return;
+          }
+          finalReference = _selectedPartnerReference!.name;
+        }
+      } else {
+        if (_selectedDistributor == null) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Distributor')));
+          return;
+        }
+        targetUid = _selectedDistributor!.uid;
+        displayPartnerName = _selectedDistributor!.name;
+        isSupply = true;
+
+        if (_selectedReferenceType == 'Partner Referral') {
+          if (_selectedPartnerReference == null) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
+            return;
+          }
+          finalReference = _selectedPartnerReference!.name;
+        }
       }
     } else {
       if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
@@ -334,7 +353,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: Text(user.role == 'admin' ? 'Supply Stock' : 'Create New Order'),
+            title: Text((user.role == 'admin' && widget.isRetailOrder)
+                ? 'Create Customer Order'
+                : (user.role == 'admin' ? 'Supply Stock' : 'Create New Order')),
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF1E3A8A),
             elevation: 0,
@@ -345,7 +366,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.all(16),
-                child: user.role == 'admin' 
+                child: (user.role == 'admin' && !widget.isRetailOrder) 
                   ? _buildAdminSelection()
                   : _buildCustomerForm(),
               ),
@@ -462,7 +483,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         child: ElevatedButton(
                           onPressed: () => _submitOrder(user.uid, user.name, user.role),
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                          child: Text(user.role == 'admin' ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          child: Text((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -546,6 +567,57 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ],
         ),
         _buildDateSelector(),
+        if (widget.isRetailOrder) ...[
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      value: _selectedReferenceType,
+                      items: const [
+                        DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedReferenceType = val ?? 'Direct (Online / Call)';
+                          if (_selectedReferenceType != 'Partner Referral') {
+                            _selectedPartnerReference = null;
+                          }
+                        });
+                      },
+                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    ),
+                  ],
+                ),
+              ),
+              if (_selectedReferenceType == 'Partner Referral') ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<UserModel>(
+                        value: _selectedPartnerReference,
+                        items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
+                        onChanged: (val) => setState(() => _selectedPartnerReference = val),
+                        decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ],
     );
   }

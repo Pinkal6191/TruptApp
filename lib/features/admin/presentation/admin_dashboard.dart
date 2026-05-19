@@ -194,6 +194,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Expanded(
                       child: _buildActionCard(
                         context,
+                        'Create Retail Order',
+                        'Direct sale with partner referral',
+                        Icons.person_add_alt_1,
+                        Colors.purple,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen(isRetailOrder: true))),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
                         'All Orders',
                         'View and manage orders',
                         Icons.receipt_long,
