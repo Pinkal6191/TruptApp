@@ -69,7 +69,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthError('User record not found in database. Please contact admin.'));
       }
     } on FirebaseAuthException catch (e) {
-      emit(AuthError(e.message ?? 'Authentication failed'));
+      String errorMessage = 'Authentication failed';
+      switch (e.code) {
+        case 'invalid-email':
+          errorMessage = 'The email address is badly formatted.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user account was found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect email or password. Please try again.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user account has been deactivated.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many failed login attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Authentication failed';
+      }
+      emit(AuthError(errorMessage));
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -95,7 +115,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       emit(AuthApprovalPending());
     } on FirebaseAuthException catch (e) {
-      emit(AuthError(e.message ?? 'Signup failed'));
+      String errorMessage = 'Signup failed';
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage = 'This email is already in use by another account.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is badly formatted.';
+          break;
+        case 'weak-password':
+          errorMessage = 'The password is too weak. It must be at least 6 characters.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Signup failed';
+      }
+      emit(AuthError(errorMessage));
     } catch (e) {
       emit(AuthError(e.toString()));
     }

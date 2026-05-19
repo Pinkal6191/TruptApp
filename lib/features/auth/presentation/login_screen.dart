@@ -64,14 +64,31 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    if (email.isNotEmpty && password.isNotEmpty) {
-      _saveRememberedUser();
-      context.read<AuthBloc>().add(LoginEvent(email: email, password: password));
-    } else {
+    
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+        const SnackBar(content: Text('Please enter your email address'), backgroundColor: Colors.red),
       );
+      return;
     }
+    
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your password'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    
+    _saveRememberedUser();
+    context.read<AuthBloc>().add(LoginEvent(email: email, password: password));
   }
 
   @override

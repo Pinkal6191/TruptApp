@@ -99,8 +99,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   keyboardType: TextInputType.phone,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter your mobile' : null,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your mobile number';
+                    }
+                    final mobileRegex = RegExp(r'^[0-9]{10}$');
+                    if (!mobileRegex.hasMatch(value.trim())) {
+                      return 'Please enter a valid 10-digit mobile number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -113,8 +121,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter your email' : null,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your email address';
+                    }
+                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -127,9 +143,15 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   obscureText: true,
-                  validator: (value) => (value?.length ?? 0) < 6
-                      ? 'Password must be at least 6 characters'
-                      : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 const Text(
