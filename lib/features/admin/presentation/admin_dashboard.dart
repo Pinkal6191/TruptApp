@@ -79,6 +79,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const Text('Administrator Control Center', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 24),
 
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .where('isApproved', isEqualTo: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                      final count = snapshot.data!.docs.length;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: Color(0xFFF59E0B),
+                            child: Icon(Icons.warning_amber_rounded, color: Colors.white),
+                          ),
+                          title: Text(
+                            '$count Registrations Pending',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                          ),
+                          subtitle: const Text('New users are waiting for your approval.'),
+                          trailing: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD97706),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+                              );
+                            },
+                            child: const Text('Review'),
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                ),
+
                 const Text(
                   'Quick Actions',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),

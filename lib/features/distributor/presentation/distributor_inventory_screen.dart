@@ -48,16 +48,34 @@ class _DistributorInventoryScreenState extends State<DistributorInventoryScreen>
                 itemCount: inventory.length,
                 itemBuilder: (context, index) {
                   final item = inventory[index];
+                  final bool isLowStock = item.stockCount <= 5;
+                  
                   return Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
-                      leading: const CircleAvatar(backgroundColor: Color(0xFF10B981), child: Icon(Icons.inventory, color: Colors.white)),
+                      leading: CircleAvatar(
+                        backgroundColor: isLowStock ? const Color(0xFFEF4444) : const Color(0xFF10B981), 
+                        child: Icon(
+                          isLowStock ? Icons.warning_amber_rounded : Icons.inventory, 
+                          color: Colors.white,
+                        ),
+                      ),
                       title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Available Crates'),
+                      subtitle: Text(
+                        isLowStock ? 'Low Stock! Please order supply' : 'Available Crates',
+                        style: TextStyle(
+                          color: isLowStock ? const Color(0xFFEF4444) : Colors.grey.shade600,
+                          fontWeight: isLowStock ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
                       trailing: Text(
                         '${item.stockCount}',
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                        style: TextStyle(
+                          fontSize: 24, 
+                          fontWeight: FontWeight.bold, 
+                          color: isLowStock ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                        ),
                       ),
                     ),
                   );
