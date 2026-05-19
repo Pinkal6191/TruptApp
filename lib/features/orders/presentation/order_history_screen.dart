@@ -280,8 +280,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   Widget _buildAdminView(List<OrderModel> orders) {
-    final partnersOrders = orders.where((o) => o.creatorRole == 'partner').toList();
-    final distributorsOrders = orders.where((o) => o.creatorRole == 'distributor').toList();
+    // Partners tab: orders by partners OR admin orders with a partner reference
+    final partnersOrders = orders.where((o) =>
+      o.creatorRole == 'partner' ||
+      (o.creatorRole == 'admin' && o.orderReference != 'Direct (Online / Call)')
+    ).toList();
+
+    // Distributors tab: orders by distributors OR admin supply orders sent to distributors
+    final distributorsOrders = orders.where((o) =>
+      o.creatorRole == 'distributor' ||
+      (o.creatorRole == 'admin' && o.isSupplyOrder)
+    ).toList();
 
     return DefaultTabController(
       length: 3,

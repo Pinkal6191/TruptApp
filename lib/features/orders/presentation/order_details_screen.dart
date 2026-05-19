@@ -131,7 +131,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Partner: ${widget.order.partnerName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      '${widget.order.isSupplyOrder ? "Distributor" : widget.order.creatorRole == "admin" ? "Admin" : "Partner"}: ${widget.order.partnerName}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 4),
                     Text('Date: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.order.createdAt)}', style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 8),

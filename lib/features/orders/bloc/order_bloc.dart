@@ -75,8 +75,12 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.createOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order created successfully!'));
-      // Reload orders for the user who created it.
-      add(LoadOrders(userId: event.order.createdBy)); 
+      // Admin sees all orders; partner/distributor sees only their own
+      if (event.order.creatorRole == 'admin') {
+        add(LoadOrders());
+      } else {
+        add(LoadOrders(userId: event.order.createdBy));
+      }
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
