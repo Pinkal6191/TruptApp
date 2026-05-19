@@ -12,20 +12,21 @@ class RegularCustomersGraph extends StatelessWidget {
     final Map<String, _CustomerStats> customerStatsMap = {};
 
     for (var order in orders) {
-      if (order.customerName.isEmpty) continue;
-      final key = '${order.customerName}_${order.customerMobile}';
+      final name = order.shopName.isNotEmpty ? order.shopName : order.partnerName;
+      if (name.isEmpty) continue;
+      final key = '${name}_${order.customerMobile}';
       
       if (customerStatsMap.containsKey(key)) {
         final current = customerStatsMap[key]!;
         customerStatsMap[key] = _CustomerStats(
-          name: order.customerName,
+          name: name,
           mobile: order.customerMobile,
           orderCount: current.orderCount + 1,
           totalSpend: current.totalSpend + order.finalAmount,
         );
       } else {
         customerStatsMap[key] = _CustomerStats(
-          name: order.customerName,
+          name: name,
           mobile: order.customerMobile,
           orderCount: 1,
           totalSpend: order.finalAmount,

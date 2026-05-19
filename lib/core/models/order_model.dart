@@ -23,6 +23,7 @@ class OrderModel {
   final String paymentStatus; // "Pending", "Partial", "Paid"
   final double paidAmount;
   final DateTime createdAt;
+  final String orderReference; // 'Direct (Online / Call)' or Partner's name
 
   OrderModel({
     required this.id,
@@ -46,6 +47,7 @@ class OrderModel {
     this.paymentStatus = 'Pending',
     this.paidAmount = 0.0,
     required this.createdAt,
+    this.orderReference = 'Direct (Online / Call)',
   });
 
   Map<String, dynamic> toMap() {
@@ -68,8 +70,9 @@ class OrderModel {
       'finalAmount': finalAmount,
       'deliveryStatus': deliveryStatus,
       'paymentStatus': paymentStatus,
-      'paidAmount': paidAmount,
+       'paidAmount': paidAmount,
       'createdAt': Timestamp.fromDate(createdAt),
+      'orderReference': orderReference,
     };
   }
 
@@ -99,6 +102,7 @@ class OrderModel {
       paymentStatus: map['paymentStatus'] ?? 'Pending',
       paidAmount: (map['paidAmount'] ?? 0).toDouble(),
       createdAt: (map['createdAt'] as Timestamp).toDate(),
+      orderReference: map['orderReference'] ?? 'Direct (Online / Call)',
     );
   }
 }

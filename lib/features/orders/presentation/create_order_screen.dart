@@ -39,6 +39,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final OrderRepository _orderRepository = OrderRepository();
   List<UserModel> _distributors = [];
   UserModel? _selectedDistributor;
+  List<UserModel> _partners = [];
+  UserModel? _selectedPartnerReference;
+  String _selectedReferenceType = 'Direct (Online / Call)';
   bool _isLoadingUsers = false;
 
   @override
@@ -86,7 +89,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       setState(() => _isLoadingUsers = true);
       try {
         final dists = await _userRepository.getDistributors();
-        setState(() => _distributors = dists);
+        final parts = await _userRepository.getPartners();
+        setState(() {
+          _distributors = dists;
+          _partners = parts.where((p) => p.isActive).toList();
+        });
       } catch (e) {
         // Handle error
       } finally {
@@ -199,6 +206,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String targetUid = uid;
     String displayPartnerName = userName;
     bool isSupply = false;
+    String finalReference = 'Direct (Online / Call)';
 
     if (userRole == 'admin') {
       if (_selectedDistributor == null) {
@@ -208,11 +216,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       targetUid = _selectedDistributor!.uid;
       displayPartnerName = _selectedDistributor!.name;
       isSupply = true;
+
+      if (_selectedReferenceType == 'Partner Referral') {
+        if (_selectedPartnerReference == null) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
+          return;
+        }
+        finalReference = _selectedPartnerReference!.name;
+      }
     } else {
       if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name and Mobile Number')));
         return;
       }
+      finalReference = userName;
     }
 
     double totalWithGst = 0;
@@ -258,6 +275,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       discount: 0,
       finalAmount: totalWithGst,
       createdAt: _selectedDate,
+      orderReference: finalReference,
     );
 
     context.read<OrderBloc>().add(CreateOrder(order: order));
@@ -546,6 +564,55 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           items: _distributors.map((u) => DropdownMenuItem(value: u, child: Text(u.name))).toList(),
           onChanged: (val) => setState(() => _selectedDistributor = val),
           decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: _selectedReferenceType,
+                    items: const [
+                      DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedReferenceType = val ?? 'Direct (Online / Call)';
+                        if (_selectedReferenceType != 'Partner Referral') {
+                          _selectedPartnerReference = null;
+                        }
+                      });
+                    },
+                    decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                  ),
+                ],
+              ),
+            ),
+            if (_selectedReferenceType == 'Partner Referral') ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<UserModel>(
+                      value: _selectedPartnerReference,
+                      items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
+                      onChanged: (val) => setState(() => _selectedPartnerReference = val),
+                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 12),
         Row(

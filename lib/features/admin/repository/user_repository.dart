@@ -21,6 +21,16 @@ class UserRepository {
       throw Exception('Failed to load distributors: $e');
     }
   }
+
+  Future<List<UserModel>> getPartners() async {
+    try {
+      final snapshot = await _firestore.collection('users').where('role', isEqualTo: 'partner').get();
+      return snapshot.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList();
+    } catch (e) {
+      throw Exception('Failed to load partners: $e');
+    }
+  }
+
   Future<void> updateCustomPrices(String userId, Map<String, double> customPrices) async {
     try {
       await _firestore.collection('users').doc(userId).update({

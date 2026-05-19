@@ -64,7 +64,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     }
 
     if (_reportType == 'partner') {
-      filtered = filtered.where((o) => o.creatorRole == 'partner').toList();
+      filtered = filtered.where((o) =>
+        o.creatorRole == 'partner' ||
+        (o.creatorRole == 'admin' && o.orderReference != 'Direct (Online / Call)')
+      ).toList();
     } else if (_reportType == 'distributor') {
       filtered = filtered.where((o) => o.creatorRole == 'distributor').toList();
     }
@@ -75,6 +78,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       String key;
       if (_reportType == 'customer') {
         key = o.shopName.isNotEmpty ? o.shopName : o.partnerName;
+      } else if (_reportType == 'partner') {
+        key = (o.creatorRole == 'admin' && o.orderReference != 'Direct (Online / Call)')
+            ? o.orderReference
+            : o.partnerName;
       } else {
         key = o.partnerName;
       }

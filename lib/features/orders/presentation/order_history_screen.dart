@@ -124,6 +124,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ],
                 ),
+                if (order.creatorRole == 'admin') ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: Colors.blue.shade700),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Ref: ${order.orderReference}',
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 8),
