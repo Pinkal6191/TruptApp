@@ -19,6 +19,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     on<CreateOrder>(_onCreateOrder);
     on<UpdateOrderStatus>(_onUpdateOrderStatus);
     on<UpdateOrderPayment>(_onUpdateOrderPayment);
+    on<DeleteOrder>(_onDeleteOrder);
   }
 
   void _onResetOrderState(ResetOrderState event, Emitter<OrderState> emit) {
@@ -97,6 +98,17 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrderPayment(event.orderId, event.paidAmount, event.paymentStatus);
       emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
+      add(LoadOrders()); 
+    } catch (e) {
+      emit(OrderError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteOrder(DeleteOrder event, Emitter<OrderState> emit) async {
+    emit(OrderLoading());
+    try {
+      await _orderRepository.deleteOrder(event.order);
+      emit(OrderOperationSuccess(message: 'Order deleted successfully!'));
       add(LoadOrders()); 
     } catch (e) {
       emit(OrderError(message: e.toString()));

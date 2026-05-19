@@ -46,3 +46,8 @@ class UpdateOrderPayment extends OrderEvent {
     required this.paymentStatus,
   });
 }
+
+class DeleteOrder extends OrderEvent {
+  final OrderModel order;
+  DeleteOrder({required this.order});
+}

@@ -347,17 +347,83 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              if (widget.order.paymentStatus == 'Paid') ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.money_off),
+                    label: const Text('Mark Unpaid'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade400,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () {
+                      context.read<OrderBloc>().add(UpdateOrderPayment(
+                            orderId: widget.order.id,
+                            paidAmount: 0.0,
+                            paymentStatus: 'Pending',
+                          ));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order marked as Pending (Unpaid)')),
+                      );
+                    },
+                  ),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.payments),
+                    label: const Text('Record Payment'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: _recordPayment,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.payments),
-                  label: const Text('Record Payment'),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete Order'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF59E0B),
+                    backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  onPressed: widget.order.paymentStatus != 'Paid' ? _recordPayment : null,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('Delete Order'),
+                        content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
+                        actions: [
+                          TextButton(
+                            child: const Text('Cancel'),
+                            onPressed: () => Navigator.pop(dialogContext),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            onPressed: () {
+                              context.read<OrderBloc>().add(DeleteOrder(order: widget.order));
+                              Navigator.pop(dialogContext); // Close dialog
+                              Navigator.pop(context); // Go back to order history screen
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Order deleted successfully!')),
+                              );
+                            },
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 32),

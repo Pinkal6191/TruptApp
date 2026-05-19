@@ -138,4 +138,23 @@ class OrderRepository {
       return DateTime.now().millisecondsSinceEpoch.toString().substring(5);
     }
   }
+
+  Future<void> deleteOrder(OrderModel order) async {
+    try {
+      await _firestore.collection(collectionName).doc(order.id).delete();
+      
+      // Reverse Stock Maintenance
+      for (var item in order.items) {
+        if (order.creatorRole == 'distributor') {
+          // Reverse distributor selling to Retailer -> Increase Distributor's stock back
+          await _inventoryRepository.updateStock(order.createdBy, item.productId, item.productName, item.quantity);
+        } else if (order.creatorRole == 'admin' && order.isSupplyOrder) {
+          // Reverse admin supplying to Distributor -> Decrease Distributor's stock back
+          await _inventoryRepository.updateStock(order.targetUserId, item.productId, item.productName, -item.quantity);
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to delete order: $e');
+    }
+  }
 }

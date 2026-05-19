@@ -186,35 +186,77 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ],
                 ),
-                if (order.deliveryStatus != 'Delivered' || order.paymentStatus != 'Paid') ...[
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (order.deliveryStatus != 'Delivered')
-                        TextButton.icon(
-                          icon: const Icon(Icons.check_circle_outline, size: 16),
-                          label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
-                          style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
-                          onPressed: () {
-                            context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered'));
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
-                          },
-                        ),
-                      if (order.paymentStatus != 'Paid')
-                        TextButton.icon(
-                          icon: const Icon(Icons.payments_outlined, size: 16),
-                          label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
-                          style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
-                          onPressed: () {
-                            context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid'));
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
-                          },
-                        ),
-                    ],
-                  ),
-                ],
+                const SizedBox(height: 12),
+                const Divider(),
+                Row(
+                  children: [
+                    // Delete Button
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      tooltip: 'Delete Order',
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Delete Order'),
+                            content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
+                            actions: [
+                              TextButton(
+                                child: const Text('Cancel'),
+                                onPressed: () => Navigator.pop(dialogContext),
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                onPressed: () {
+                                  context.read<OrderBloc>().add(DeleteOrder(order: order));
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Deleting order...')),
+                                  );
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const Spacer(),
+                    if (order.deliveryStatus != 'Delivered')
+                      TextButton.icon(
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
+                        onPressed: () {
+                          context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered'));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
+                        },
+                      ),
+                    const SizedBox(width: 8),
+                    if (order.paymentStatus != 'Paid')
+                      TextButton.icon(
+                        icon: const Icon(Icons.payments_outlined, size: 16),
+                        label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
+                        onPressed: () {
+                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid'));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
+                        },
+                      )
+                    else
+                      TextButton.icon(
+                        icon: const Icon(Icons.money_off_outlined, size: 16),
+                        label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () {
+                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: 0.0, paymentStatus: 'Pending'));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Pending (Unpaid)')));
+                        },
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
