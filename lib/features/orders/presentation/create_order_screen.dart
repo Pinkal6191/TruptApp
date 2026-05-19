@@ -217,13 +217,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         }
         isSupply = false;
         targetUid = uid;
-        displayPartnerName = userName;
+        displayPartnerName = userName; // default: admin's name
         
         if (_selectedReferenceType == 'Partner Referral') {
           if (_selectedPartnerReference == null) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
             return;
           }
+          // Credit this order to the referred partner, not the admin
+          displayPartnerName = _selectedPartnerReference!.name;
           finalReference = _selectedPartnerReference!.name;
         }
       } else {
@@ -240,6 +242,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
             return;
           }
+          // Credit this supply to the referred partner
+          displayPartnerName = _selectedPartnerReference!.name;
           finalReference = _selectedPartnerReference!.name;
         }
       }
