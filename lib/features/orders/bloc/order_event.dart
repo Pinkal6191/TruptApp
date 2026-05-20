@@ -27,11 +27,13 @@ class UpdateOrderStatus extends OrderEvent {
   final String orderId;
   final String statusType; // 'deliveryStatus' or 'paymentStatus'
   final String newStatus;
+  final String? userId;
 
   UpdateOrderStatus({
     required this.orderId,
     required this.statusType,
     required this.newStatus,
+    this.userId,
   });
 }
 
@@ -39,15 +41,22 @@ class UpdateOrderPayment extends OrderEvent {
   final String orderId;
   final double paidAmount;
   final String paymentStatus;
+  final String? userId;
 
   UpdateOrderPayment({
     required this.orderId,
     required this.paidAmount,
     required this.paymentStatus,
+    this.userId,
   });
 }
 
 class DeleteOrder extends OrderEvent {
   final OrderModel order;
-  DeleteOrder({required this.order});
+  final String? userId;
+
+  DeleteOrder({
+    required this.order,
+    this.userId,
+  });
 }

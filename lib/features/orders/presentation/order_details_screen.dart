@@ -18,10 +18,13 @@ class OrderDetailsScreen extends StatefulWidget {
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   void _updateDeliveryStatus(String newStatus) {
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
     context.read<OrderBloc>().add(UpdateOrderStatus(
           orderId: widget.order.id,
           statusType: 'deliveryStatus',
           newStatus: newStatus,
+          userId: userId,
         ));
     Navigator.pop(context);
   }
@@ -82,10 +85,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
+                    final authState = context.read<AuthBloc>().state;
+                    final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
                     context.read<OrderBloc>().add(UpdateOrderPayment(
                           orderId: widget.order.id,
                           paidAmount: widget.order.paidAmount + amount,
                           paymentStatus: status,
+                          userId: userId,
                         ));
                     Navigator.pop(context);
                     Navigator.pop(context);
@@ -362,10 +368,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: () {
+                      final userId = isAdmin ? null : authState.user.uid;
                       context.read<OrderBloc>().add(UpdateOrderPayment(
                             orderId: widget.order.id,
                             paidAmount: 0.0,
                             paymentStatus: 'Pending',
+                            userId: userId,
                           ));
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -414,7 +422,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                           TextButton(
                             style: TextButton.styleFrom(foregroundColor: Colors.red),
                             onPressed: () {
-                              context.read<OrderBloc>().add(DeleteOrder(order: widget.order));
+                              final userId = isAdmin ? null : authState.user.uid;
+                              context.read<OrderBloc>().add(DeleteOrder(order: widget.order, userId: userId));
                               Navigator.pop(dialogContext); // Close dialog
                               Navigator.pop(context); // Go back to order history screen
                               ScaffoldMessenger.of(context).showSnackBar(

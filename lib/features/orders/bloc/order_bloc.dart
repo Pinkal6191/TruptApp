@@ -91,7 +91,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrderStatus(event.orderId, event.statusType, event.newStatus);
       emit(OrderOperationSuccess(message: 'Order status updated!'));
-      add(LoadOrders()); 
+      add(LoadOrders(userId: event.userId)); 
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
@@ -102,7 +102,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrderPayment(event.orderId, event.paidAmount, event.paymentStatus);
       emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
-      add(LoadOrders()); 
+      add(LoadOrders(userId: event.userId)); 
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
@@ -113,7 +113,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.deleteOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order deleted successfully!'));
-      add(LoadOrders()); 
+      add(LoadOrders(userId: event.userId)); 
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }

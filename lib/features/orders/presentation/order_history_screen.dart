@@ -210,6 +210,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       constraints: const BoxConstraints(),
                       padding: EdgeInsets.zero,
                       onPressed: () {
+                        final authState = context.read<AuthBloc>().state;
+                        final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
                         showDialog(
                           context: context,
                           builder: (dialogContext) => AlertDialog(
@@ -223,7 +225,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               TextButton(
                                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                                 onPressed: () {
-                                  context.read<OrderBloc>().add(DeleteOrder(order: order));
+                                  context.read<OrderBloc>().add(DeleteOrder(order: order, userId: userId));
                                   Navigator.pop(dialogContext);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Deleting order...')),
@@ -243,7 +245,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
                         onPressed: () {
-                          context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered'));
+                          final authState = context.read<AuthBloc>().state;
+                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                          context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered', userId: userId));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
                         },
                       ),
@@ -254,7 +258,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
                         onPressed: () {
-                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid'));
+                          final authState = context.read<AuthBloc>().state;
+                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid', userId: userId));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
                         },
                       )
@@ -264,7 +270,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(foregroundColor: Colors.red),
                         onPressed: () {
-                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: 0.0, paymentStatus: 'Pending'));
+                          final authState = context.read<AuthBloc>().state;
+                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: 0.0, paymentStatus: 'Pending', userId: userId));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Pending (Unpaid)')));
                         },
                       ),
