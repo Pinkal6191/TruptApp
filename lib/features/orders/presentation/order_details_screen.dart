@@ -113,6 +113,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final bool isAdmin = authState.user.role == 'admin';
     final bool isCreator = authState.user.uid == widget.order.createdBy;
     final bool canManage = isAdmin || isCreator;
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -151,19 +152,23 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     const SizedBox(height: 16),
                     if (widget.order.shopName.isNotEmpty) ...[
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Shop/Customer', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text(widget.order.shopName),
+                          const SizedBox(width: 16),
+                          Expanded(child: Text(widget.order.shopName, textAlign: TextAlign.right)),
                         ],
                       ),
                       const SizedBox(height: 8),
                     ],
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Mobile', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(widget.order.customerMobile.isEmpty ? 'N/A' : widget.order.customerMobile),
+                        const SizedBox(width: 16),
+                        Expanded(child: Text(widget.order.customerMobile.isEmpty ? 'N/A' : widget.order.customerMobile, textAlign: TextAlign.right)),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -185,7 +190,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Delivery Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(widget.order.deliveryStatus, style: const TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 16),
+                        Expanded(child: Text(widget.order.deliveryStatus, style: const TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -193,7 +199,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Payment Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(widget.order.paymentStatus, style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 16),
+                        Expanded(child: Text(widget.order.paymentStatus, style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
                       ],
                     ),
                   ],
@@ -283,78 +290,146 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             
             // Generate Invoice Buttons
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.picture_as_pdf, size: 18),
-                    label: const Text('Bill (With GST)', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      foregroundColor: const Color(0xFF1E3A8A),
-                      side: const BorderSide(color: Color(0xFF1E3A8A)),
-                    ),
-                    onPressed: () {
-                      InvoiceService.generateAndShareInvoice(widget.order, withGst: true);
-                    },
+            if (isMobile) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('Bill (With GST)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: const Color(0xFF1E3A8A),
+                    side: const BorderSide(color: Color(0xFF1E3A8A)),
                   ),
+                  onPressed: () {
+                    InvoiceService.generateAndShareInvoice(widget.order, withGst: true);
+                  },
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.picture_as_pdf, size: 18),
-                    label: const Text('Bill (No GST)', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      foregroundColor: Colors.teal,
-                      side: const BorderSide(color: Colors.teal),
-                    ),
-                    onPressed: () {
-                      InvoiceService.generateAndShareInvoice(widget.order, withGst: false);
-                    },
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('Bill (No GST)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: Colors.teal,
+                    side: const BorderSide(color: Colors.teal),
                   ),
+                  onPressed: () {
+                    InvoiceService.generateAndShareInvoice(widget.order, withGst: false);
+                  },
                 ),
-              ],
-            ),
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text('Bill (With GST)', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: const Color(0xFF1E3A8A),
+                        side: const BorderSide(color: Color(0xFF1E3A8A)),
+                      ),
+                      onPressed: () {
+                        InvoiceService.generateAndShareInvoice(widget.order, withGst: true);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text('Bill (No GST)', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Colors.teal,
+                        side: const BorderSide(color: Colors.teal),
+                      ),
+                      onPressed: () {
+                        InvoiceService.generateAndShareInvoice(widget.order, withGst: false);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
             
             // Order Actions
             if (canManage) ...[
               const SizedBox(height: 32),
               const Text('Order Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.local_shipping),
-                      label: const Text('Mark Dispatched'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: widget.order.deliveryStatus != 'Dispatched' && widget.order.deliveryStatus != 'Delivered'
-                          ? () => _updateDeliveryStatus('Dispatched')
-                          : null,
+              if (isMobile) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.local_shipping),
+                    label: const Text('Mark Dispatched'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
+                    onPressed: widget.order.deliveryStatus != 'Dispatched' && widget.order.deliveryStatus != 'Delivered'
+                        ? () => _updateDeliveryStatus('Dispatched')
+                        : null,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle),
-                      label: const Text('Mark Delivered'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: widget.order.deliveryStatus != 'Delivered'
-                          ? () => _updateDeliveryStatus('Delivered')
-                          : null,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Mark Delivered'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
+                    onPressed: widget.order.deliveryStatus != 'Delivered'
+                        ? () => _updateDeliveryStatus('Delivered')
+                        : null,
                   ),
-                ],
-              ),
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.local_shipping),
+                        label: const Text('Mark Dispatched'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: widget.order.deliveryStatus != 'Dispatched' && widget.order.deliveryStatus != 'Delivered'
+                            ? () => _updateDeliveryStatus('Dispatched')
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Mark Delivered'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: widget.order.deliveryStatus != 'Delivered'
+                            ? () => _updateDeliveryStatus('Delivered')
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               if (widget.order.paymentStatus == 'Paid') ...[
                 SizedBox(

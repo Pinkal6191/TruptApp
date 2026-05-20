@@ -340,19 +340,189 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
+  void _showCartBottomSheet(UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            double totalWithGst = 0;
+            for (var item in _cart) {
+              totalWithGst += (item.quantity * item.pricePerCrate);
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Order Summary',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  if (_cart.isEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Text(
+                          'Your cart is empty',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _cart.length,
+                        itemBuilder: (context, index) {
+                          final item = _cart[index];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('₹${item.pricePerCrate} x ${item.quantity}'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                  onPressed: () {
+                                    final controller = TextEditingController(text: item.pricePerCrate.toString());
+                                    showDialog(
+                                      context: context,
+                                      builder: (dialogContext) => AlertDialog(
+                                        title: Text('Edit Price: ${item.productName}'),
+                                        content: TextField(
+                                          controller: controller,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          decoration: const InputDecoration(labelText: 'Negotiated Price (₹)'),
+                                        ),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              final newPrice = double.tryParse(controller.text.trim());
+                                              if (newPrice != null && newPrice >= 0) {
+                                                setState(() {
+                                                  _cart[index] = OrderItemModel(
+                                                    productId: item.productId,
+                                                    productName: item.productName,
+                                                    quantity: item.quantity,
+                                                    pricePerCrate: newPrice,
+                                                    distributorCost: item.distributorCost,
+                                                  );
+                                                });
+                                                setModalState(() {});
+                                                Navigator.pop(dialogContext);
+                                              }
+                                            },
+                                            child: const Text('Update Bill Price'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  tooltip: 'Negotiate Price',
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                  onPressed: () {
+                                    _updateQuantity(index, item.quantity - 1);
+                                    setModalState(() {});
+                                  },
+                                ),
+                                Text('${item.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, color: Colors.green),
+                                  onPressed: () {
+                                    _updateQuantity(index, item.quantity + 1);
+                                    setModalState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount (Incl. GST)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(
+                            '₹${totalWithGst.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _submitOrder(user.uid, user.name, user.role);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          (user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double totalWithGst = 0;
     for (var item in _cart) {
       totalWithGst += (item.quantity * item.pricePerCrate);
     }
-    double subtotal = totalWithGst / (1 + gstRate);
-    double gstAmount = totalWithGst - subtotal;
 
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         if (authState is! Authenticated) return const SizedBox();
         final user = authState.user;
+        final bool isMobile = MediaQuery.of(context).size.width < 600;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
@@ -371,8 +541,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 color: Colors.white,
                 padding: const EdgeInsets.all(16),
                 child: (user.role == 'admin' && !widget.isRetailOrder) 
-                  ? _buildAdminSelection()
-                  : _buildCustomerForm(),
+                  ? _buildAdminSelection(isMobile)
+                  : _buildCustomerForm(isMobile),
               ),
               const Divider(height: 1),
               Expanded(
@@ -422,8 +592,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         ],
                       ),
                     ),
-                    // Cart
-                    if (_cart.isNotEmpty)
+                    // Cart (Tablet / Desktop view only)
+                    if (!isMobile && _cart.isNotEmpty)
                       Expanded(
                         flex: 1,
                         child: Container(
@@ -439,21 +609,57 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   itemCount: _cart.length,
                                   itemBuilder: (context, index) {
                                     final item = _cart[index];
-                                    return ListTile(
-                                      title: Text(item.productName),
-                                      subtitle: Text('₹${item.pricePerCrate} x ${item.quantity}'),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      child: Row(
                                         children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                                            onPressed: () => _editPrice(index),
-                                            tooltip: 'Negotiate Price',
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item.productName,
+                                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '₹${item.pricePerCrate} x ${item.quantity}',
+                                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                           const SizedBox(width: 8),
-                                          IconButton(icon: const Icon(Icons.remove), onPressed: () => _updateQuantity(index, item.quantity - 1)),
-                                          Text('${item.quantity}'),
-                                          IconButton(icon: const Icon(Icons.add), onPressed: () => _updateQuantity(index, item.quantity + 1)),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                onPressed: () => _editPrice(index),
+                                                tooltip: 'Negotiate Price',
+                                              ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                icon: const Icon(Icons.remove, size: 18),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                onPressed: () => _updateQuantity(index, item.quantity - 1),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                                child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.add, size: 18),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                onPressed: () => _updateQuantity(index, item.quantity + 1),
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     );
@@ -468,31 +674,85 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ),
               ),
               if (_cart.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  color: Colors.white,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total (Inclusive of GST)'),
-                          Text('₹${totalWithGst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () => _submitOrder(user.uid, user.name, user.role),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                          child: Text((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                isMobile
+                    ? Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, -4),
+                            ),
+                          ],
+                        ),
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Total (Incl. GST)',
+                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '₹${totalWithGst.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E3A8A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => _showCartBottomSheet(user),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E3A8A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.shopping_cart_outlined, size: 20),
+                              label: Text(
+                                'Review Order (${_cart.fold(0, (sum, item) => sum + item.quantity)})',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(24),
+                        color: Colors.white,
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Total (Inclusive of GST)'),
+                                Text('₹${totalWithGst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: () => _submitOrder(user.uid, user.name, user.role),
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                                child: Text((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
             ],
           ),
         );
@@ -500,214 +760,248 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildCustomerForm() {
+  Widget _buildCustomerForm(bool isMobile) {
+    final shopField = BlocBuilder<CustomerBloc, CustomerState>(
+      builder: (context, state) {
+        List<CustomerModel> customers = [];
+        if (state is CustomersLoaded) {
+          customers = state.customers;
+        }
+        return Autocomplete<CustomerModel>(
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<CustomerModel>.empty();
+            }
+            return customers.where((CustomerModel customer) {
+              return customer.shopName.toLowerCase().contains(textEditingValue.text.toLowerCase());
+            });
+          },
+          displayStringForOption: (CustomerModel option) => option.shopName,
+          onSelected: (CustomerModel selection) {
+            _mobileController.text = selection.mobileNumber;
+            _addressController.text = selection.address;
+            _gstController.text = selection.gstNumber;
+          },
+          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+            _shopNameController = controller;
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Shop Name / Customer', border: OutlineInputBorder(), isDense: true),
+              onSubmitted: (String value) {
+                onFieldSubmitted();
+              },
+            );
+          },
+        );
+      },
+    );
+
+    final mobileField = TextField(
+      controller: _mobileController,
+      decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
+      keyboardType: TextInputType.phone,
+    );
+
+    final addressField = TextField(
+      controller: _addressController,
+      decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
+    );
+
+    final gstField = TextField(
+      controller: _gstController,
+      decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
+    );
+
+    final referenceTypeField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _selectedReferenceType,
+          items: const [
+            DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
+            DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _selectedReferenceType = val ?? 'Direct (Online / Call)';
+              if (_selectedReferenceType != 'Partner Referral') {
+                _selectedPartnerReference = null;
+              }
+            });
+          },
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        ),
+      ],
+    );
+
+    final partnerReferenceField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<UserModel>(
+          value: _selectedPartnerReference,
+          items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
+          onChanged: (val) => setState(() => _selectedPartnerReference = val),
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        ),
+      ],
+    );
+
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: BlocBuilder<CustomerBloc, CustomerState>(
-                builder: (context, state) {
-                  List<CustomerModel> customers = [];
-                  if (state is CustomersLoaded) {
-                    customers = state.customers;
-                  }
-                  return Autocomplete<CustomerModel>(
-                    optionsBuilder: (TextEditingValue textEditingValue) {
-                      if (textEditingValue.text.isEmpty) {
-                        return const Iterable<CustomerModel>.empty();
-                      }
-                      return customers.where((CustomerModel customer) {
-                        return customer.shopName.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                      });
-                    },
-                    displayStringForOption: (CustomerModel option) => option.shopName,
-                    onSelected: (CustomerModel selection) {
-                      _mobileController.text = selection.mobileNumber;
-                      _addressController.text = selection.address;
-                      _gstController.text = selection.gstNumber;
-                    },
-                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                      _shopNameController = controller;
-                      return TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: const InputDecoration(labelText: 'Shop Name / Customer', border: OutlineInputBorder(), isDense: true),
-                        onSubmitted: (String value) {
-                          onFieldSubmitted();
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _mobileController,
-                decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
-                keyboardType: TextInputType.phone,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _gstController,
-                decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
-              ),
-            ),
-          ],
-        ),
+        if (isMobile) ...[
+          shopField,
+          const SizedBox(height: 12),
+          mobileField,
+          const SizedBox(height: 12),
+          addressField,
+          const SizedBox(height: 12),
+          gstField,
+        ] else ...[
+          Row(
+            children: [
+              Expanded(child: shopField),
+              const SizedBox(width: 12),
+              Expanded(child: mobileField),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: addressField),
+              const SizedBox(width: 12),
+              Expanded(child: gstField),
+            ],
+          ),
+        ],
         _buildDateSelector(),
         if (widget.isRetailOrder) ...[
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _selectedReferenceType,
-                      items: const [
-                        DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
-                      ],
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedReferenceType = val ?? 'Direct (Online / Call)';
-                          if (_selectedReferenceType != 'Partner Referral') {
-                            _selectedPartnerReference = null;
-                          }
-                        });
-                      },
-                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                    ),
-                  ],
-                ),
-              ),
-              if (_selectedReferenceType == 'Partner Referral') ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<UserModel>(
-                        value: _selectedPartnerReference,
-                        items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
-                        onChanged: (val) => setState(() => _selectedPartnerReference = val),
-                        decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          if (isMobile) ...[
+            referenceTypeField,
+            if (_selectedReferenceType == 'Partner Referral') ...[
+              const SizedBox(height: 12),
+              partnerReferenceField,
             ],
-          ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: referenceTypeField),
+                if (_selectedReferenceType == 'Partner Referral') ...[
+                  const SizedBox(width: 12),
+                  Expanded(child: partnerReferenceField),
+                ] else
+                  const Expanded(child: SizedBox()),
+              ],
+            ),
+          ],
         ],
       ],
     );
   }
 
-  Widget _buildAdminSelection() {
+  Widget _buildAdminSelection(bool isMobile) {
     if (_isLoadingUsers) return const Center(child: CircularProgressIndicator());
     if (_distributors.isEmpty) return const Text('No distributors found to supply stock.');
-    
+
+    final distributorField = DropdownButtonFormField<UserModel>(
+      value: _selectedDistributor,
+      items: _distributors.map((u) => DropdownMenuItem(value: u, child: Text(u.name))).toList(),
+      onChanged: (val) => setState(() => _selectedDistributor = val),
+      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+    );
+
+    final referenceTypeField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _selectedReferenceType,
+          items: const [
+            DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
+            DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _selectedReferenceType = val ?? 'Direct (Online / Call)';
+              if (_selectedReferenceType != 'Partner Referral') {
+                _selectedPartnerReference = null;
+              }
+            });
+          },
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        ),
+      ],
+    );
+
+    final partnerReferenceField = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<UserModel>(
+          value: _selectedPartnerReference,
+          items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
+          onChanged: (val) => setState(() => _selectedPartnerReference = val),
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+        ),
+      ],
+    );
+
+    final addressField = TextField(
+      controller: _addressController,
+      decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
+    );
+
+    final gstField = TextField(
+      controller: _gstController,
+      decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Select Distributor:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        DropdownButtonFormField<UserModel>(
-          value: _selectedDistributor,
-          items: _distributors.map((u) => DropdownMenuItem(value: u, child: Text(u.name))).toList(),
-          onChanged: (val) => setState(() => _selectedDistributor = val),
-          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-        ),
+        distributorField,
         const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Order Reference / Referral:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    value: _selectedReferenceType,
-                    items: const [
-                      DropdownMenuItem(value: 'Direct (Online / Call)', child: Text('Direct (Online / Call)', style: TextStyle(fontSize: 13))),
-                      DropdownMenuItem(value: 'Partner Referral', child: Text('Partner Referral', style: TextStyle(fontSize: 13))),
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedReferenceType = val ?? 'Direct (Online / Call)';
-                        if (_selectedReferenceType != 'Partner Referral') {
-                          _selectedPartnerReference = null;
-                        }
-                      });
-                    },
-                    decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                  ),
-                ],
-              ),
-            ),
-            if (_selectedReferenceType == 'Partner Referral') ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Select Partner Reference:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<UserModel>(
-                      value: _selectedPartnerReference,
-                      items: _partners.map((u) => DropdownMenuItem(value: u, child: Text(u.name, style: const TextStyle(fontSize: 13)))).toList(),
-                      onChanged: (val) => setState(() => _selectedPartnerReference = val),
-                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                    ),
-                  ],
-                ),
-              ),
+        if (isMobile) ...[
+          referenceTypeField,
+          if (_selectedReferenceType == 'Partner Referral') ...[
+            const SizedBox(height: 12),
+            partnerReferenceField,
+          ],
+          const SizedBox(height: 12),
+          addressField,
+          const SizedBox(height: 12),
+          gstField,
+        ] else ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: referenceTypeField),
+              if (_selectedReferenceType == 'Partner Referral') ...[
+                const SizedBox(width: 12),
+                Expanded(child: partnerReferenceField),
+              ] else
+                const Expanded(child: SizedBox()),
             ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Address (Optional)', border: OutlineInputBorder(), isDense: true),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _gstController,
-                decoration: const InputDecoration(labelText: 'GST Number (Optional)', border: OutlineInputBorder(), isDense: true),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: addressField),
+              const SizedBox(width: 12),
+              Expanded(child: gstField),
+            ],
+          ),
+        ],
         _buildDateSelector(),
       ],
     );

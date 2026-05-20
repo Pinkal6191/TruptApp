@@ -114,10 +114,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      order.shopName.isNotEmpty ? order.shopName : order.partnerName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    Expanded(
+                      child: Text(
+                        order.shopName.isNotEmpty ? order.shopName : order.partnerName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       DateFormat('MMM dd, yyyy').format(order.createdAt),
                       style: TextStyle(color: Colors.grey.shade600),
@@ -145,7 +150,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${item.quantity}x ${item.productName}'),
+                          Expanded(
+                            child: Text(
+                              '${item.quantity}x ${item.productName}',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text('₹${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}'),
                         ],
                       ),
@@ -355,22 +367,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             title: Text(creatorName, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('${creatorOrders.length} Orders • Total: ₹${totalAmount.toStringAsFixed(0)}'),
             children: [
-              SizedBox(
-                height: 300, // Fixed height for nested list to prevent scroll issues, or use shrinkWrap
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: creatorOrders.length,
-                  itemBuilder: (context, subIndex) {
-                    final order = creatorOrders[subIndex];
-                    return ListTile(
-                      title: Text(DateFormat('MMM dd, yyyy').format(order.createdAt)),
-                      subtitle: Text('Status: ${order.deliveryStatus}'),
-                      trailing: Text('₹${order.finalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order))),
-                    );
-                  },
-                ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: creatorOrders.length,
+                itemBuilder: (context, subIndex) {
+                  final order = creatorOrders[subIndex];
+                  return ListTile(
+                    title: Text(DateFormat('MMM dd, yyyy').format(order.createdAt)),
+                    subtitle: Text('Status: ${order.deliveryStatus}'),
+                    trailing: Text('₹${order.finalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order))),
+                  );
+                },
               ),
             ],
           ),
