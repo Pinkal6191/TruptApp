@@ -193,7 +193,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: PdfPageFormat.a4.landscape,
         build: (pw.Context context) {
           return [
             pw.Text('Trupt Enterprise - Business Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
