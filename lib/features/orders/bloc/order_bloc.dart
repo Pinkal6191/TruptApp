@@ -17,6 +17,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     on<OrdersUpdated>((event, emit) => emit(OrdersLoaded(orders: event.orders)));
     on<ResetOrderState>(_onResetOrderState);
     on<CreateOrder>(_onCreateOrder);
+    on<UpdateOrder>(_onUpdateOrder);
     on<UpdateOrderStatus>(_onUpdateOrderStatus);
     on<UpdateOrderPayment>(_onUpdateOrderPayment);
     on<DeleteOrder>(_onDeleteOrder);
@@ -76,6 +77,21 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       await _orderRepository.createOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order created successfully!'));
       // Admin sees all orders; partner/distributor sees only their own
+      if (event.order.creatorRole == 'admin') {
+        add(LoadOrders());
+      } else {
+        add(LoadOrders(userId: event.order.createdBy));
+      }
+    } catch (e) {
+      emit(OrderError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateOrder(UpdateOrder event, Emitter<OrderState> emit) async {
+    emit(OrderLoading());
+    try {
+      await _orderRepository.updateOrder(event.order);
+      emit(OrderOperationSuccess(message: 'Order updated successfully!'));
       if (event.order.creatorRole == 'admin') {
         add(LoadOrders());
       } else {

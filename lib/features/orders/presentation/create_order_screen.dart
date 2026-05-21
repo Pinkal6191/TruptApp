@@ -21,7 +21,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   final bool isRetailOrder;
-  const CreateOrderScreen({super.key, this.isRetailOrder = false});
+  final OrderModel? existingOrder;
+  const CreateOrderScreen({super.key, this.isRetailOrder = false, this.existingOrder});
 
   @override
   State<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -34,6 +35,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _mobileController = TextEditingController();
   final _addressController = TextEditingController();
   final _gstController = TextEditingController();
+  final _additionalNoteController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   
   final UserRepository _userRepository = UserRepository();
@@ -51,6 +53,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     context.read<ProductBloc>().add(LoadProducts());
     context.read<CustomerBloc>().add(LoadCustomers());
     _loadDistributors();
+    
+    if (widget.existingOrder != null) {
+      _cart.addAll(widget.existingOrder!.items.map((item) => OrderItemModel(
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        pricePerCrate: item.pricePerCrate,
+        distributorCost: item.distributorCost,
+      )));
+      _mobileController.text = widget.existingOrder!.customerMobile;
+      _addressController.text = widget.existingOrder!.customerAddress;
+      _gstController.text = widget.existingOrder!.customerGstNumber;
+      _selectedDate = widget.existingOrder!.createdAt;
+      _additionalNoteController.text = widget.existingOrder!.additionalNote;
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -94,6 +111,24 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         setState(() {
           _distributors = dists;
           _partners = parts.where((p) => p.isActive).toList();
+          
+          if (widget.existingOrder != null) {
+            if (widget.existingOrder!.isSupplyOrder) {
+              try {
+                _selectedDistributor = _distributors.firstWhere(
+                  (d) => d.uid == widget.existingOrder!.targetUserId,
+                );
+              } catch (_) {}
+            }
+            if (widget.existingOrder!.orderReference != 'Direct (Online / Call)') {
+              _selectedReferenceType = 'Partner Referral';
+              try {
+                _selectedPartnerReference = _partners.firstWhere(
+                  (p) => p.name == widget.existingOrder!.orderReference,
+                );
+              } catch (_) {}
+            }
+          }
         });
       } catch (e) {
         // Handle error
@@ -109,6 +144,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _mobileController.dispose();
     _addressController.dispose();
     _gstController.dispose();
+    _additionalNoteController.dispose();
     super.dispose();
   }
 
@@ -279,29 +315,48 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String customerGst = _gstController.text.trim();
     if (customerGst.isEmpty) customerGst = 'URP';
 
+    String finalPaymentStatus = widget.existingOrder != null ? widget.existingOrder!.paymentStatus : 'Pending';
+    double currentPaidAmount = widget.existingOrder != null ? widget.existingOrder!.paidAmount : 0.0;
+    if (widget.existingOrder != null) {
+      if (currentPaidAmount >= totalWithGst) {
+        finalPaymentStatus = 'Paid';
+      } else if (currentPaidAmount > 0.0) {
+        finalPaymentStatus = 'Partial';
+      } else {
+        finalPaymentStatus = 'Pending';
+      }
+    }
+
     final order = OrderModel(
-      id: '',
-      createdBy: uid,
+      id: widget.existingOrder?.id ?? '',
+      createdBy: widget.existingOrder?.createdBy ?? uid,
       targetUserId: targetUid,
       partnerName: displayPartnerName,
       shopName: _shopNameController.text.trim(),
       customerMobile: _mobileController.text.trim(),
       customerAddress: _addressController.text.trim(),
       customerGstNumber: customerGst,
-      invoiceNumber: invoiceNumber,
-      creatorRole: userRole,
-      isInclusiveGST: true,
-      isSupplyOrder: isSupply,
+      invoiceNumber: widget.existingOrder?.invoiceNumber ?? invoiceNumber,
+      creatorRole: widget.existingOrder?.creatorRole ?? userRole,
+      isInclusiveGST: widget.existingOrder?.isInclusiveGST ?? true,
+      isSupplyOrder: widget.existingOrder?.isSupplyOrder ?? isSupply,
       items: _cart,
       subtotal: subtotal,
       gstAmount: gstAmount,
-      discount: 0,
+      discount: widget.existingOrder?.discount ?? 0,
       finalAmount: totalWithGst,
       createdAt: _selectedDate,
       orderReference: finalReference,
+      paidAmount: currentPaidAmount,
+      paymentStatus: finalPaymentStatus,
+      additionalNote: _additionalNoteController.text.trim(),
     );
 
-    context.read<OrderBloc>().add(CreateOrder(order: order));
+    if (widget.existingOrder != null) {
+      context.read<OrderBloc>().add(UpdateOrder(order: order, userId: uid));
+    } else {
+      context.read<OrderBloc>().add(CreateOrder(order: order));
+    }
     
     // CUSTOMER MANAGEMENT LOGIC
     if (!isSupply) {
@@ -336,7 +391,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Order created successfully!'), backgroundColor: Colors.green),
+      SnackBar(
+        content: Text(widget.existingOrder != null ? 'Order updated successfully!' : 'Order created successfully!'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -495,7 +553,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: Text(
-                          (user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order',
+                          widget.existingOrder != null 
+                              ? 'Update Order' 
+                              : ((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order'),
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -527,9 +587,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: Text((user.role == 'admin' && widget.isRetailOrder)
-                ? 'Create Customer Order'
-                : (user.role == 'admin' ? 'Supply Stock' : 'Create New Order')),
+            title: Text(widget.existingOrder != null
+                ? 'Edit Order Details'
+                : (user.role == 'admin' && widget.isRetailOrder)
+                    ? 'Create Customer Order'
+                    : (user.role == 'admin' ? 'Supply Stock' : 'Create New Order')),
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF1E3A8A),
             elevation: 0,
@@ -747,7 +809,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                               child: ElevatedButton(
                                 onPressed: () => _submitOrder(user.uid, user.name, user.role),
                                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                                child: Text((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                 child: Text(
+                                   widget.existingOrder != null 
+                                       ? 'Update Order' 
+                                       : ((user.role == 'admin' && !widget.isRetailOrder) ? 'Supply to Distributor' : 'Confirm Order'),
+                                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                 ),
                               ),
                             ),
                           ],
@@ -768,6 +835,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           customers = state.customers;
         }
         return Autocomplete<CustomerModel>(
+          initialValue: widget.existingOrder != null 
+              ? TextEditingValue(text: widget.existingOrder!.shopName) 
+              : null,
           optionsBuilder: (TextEditingValue textEditingValue) {
             if (textEditingValue.text.isEmpty) {
               return const Iterable<CustomerModel>.empty();
@@ -879,6 +949,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ),
         ],
         _buildDateSelector(),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _additionalNoteController,
+          decoration: const InputDecoration(labelText: 'Additional Note (Optional)', border: OutlineInputBorder(), isDense: true),
+          maxLines: 2,
+        ),
         if (widget.isRetailOrder) ...[
           const SizedBox(height: 12),
           if (isMobile) ...[
@@ -1003,6 +1079,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ),
         ],
         _buildDateSelector(),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _additionalNoteController,
+          decoration: const InputDecoration(labelText: 'Additional Note (Optional)', border: OutlineInputBorder(), isDense: true),
+          maxLines: 2,
+        ),
       ],
     );
   }

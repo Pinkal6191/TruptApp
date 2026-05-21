@@ -226,6 +226,40 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                BlocBuilder<OrderBloc, OrderState>(
+                  builder: (context, state) {
+                    double totalCollected = 0.0;
+                    double totalPending = 0.0;
+                    if (state is OrdersLoaded) {
+                      for (var order in state.orders) {
+                        totalCollected += order.paidAmount;
+                        totalPending += order.remainingAmount;
+                      }
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryIndicatorCard(
+                            'Total Collected',
+                            '₹${totalCollected.toStringAsFixed(0)}',
+                            Icons.account_balance_wallet,
+                            const Color(0xFF10B981),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSummaryIndicatorCard(
+                            'Total Pending',
+                            '₹${totalPending.toStringAsFixed(0)}',
+                            Icons.pending_actions,
+                            const Color(0xFFF59E0B),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
                 const SizedBox(height: 28),
 
                 const Text(

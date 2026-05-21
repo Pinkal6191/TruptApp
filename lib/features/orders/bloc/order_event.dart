@@ -23,6 +23,12 @@ class CreateOrder extends OrderEvent {
   CreateOrder({required this.order});
 }
 
+class UpdateOrder extends OrderEvent {
+  final OrderModel order;
+  final String? userId;
+  UpdateOrder({required this.order, this.userId});
+}
+
 class UpdateOrderStatus extends OrderEvent {
   final String orderId;
   final String statusType; // 'deliveryStatus' or 'paymentStatus'

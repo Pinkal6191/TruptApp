@@ -100,10 +100,17 @@ class OrderRepository {
 
   Future<void> updateOrderPayment(String orderId, double paidAmount, String paymentStatus) async {
     try {
-      await _firestore.collection(collectionName).doc(orderId).update({
-        'paidAmount': paidAmount,
-        'paymentStatus': paymentStatus,
-      });
+      final doc = await _firestore.collection(collectionName).doc(orderId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final double finalAmount = (data['finalAmount'] ?? 0.0).toDouble();
+        final double remaining = finalAmount - paidAmount;
+        await _firestore.collection(collectionName).doc(orderId).update({
+          'paidAmount': paidAmount,
+          'remainingAmount': remaining >= 0 ? remaining : 0.0,
+          'paymentStatus': paymentStatus,
+        });
+      }
     } catch (e) {
       throw Exception('Failed to update payment: $e');
     }
@@ -143,6 +150,46 @@ class OrderRepository {
     } catch (e) {
       // Fallback if transaction fails
       return DateTime.now().millisecondsSinceEpoch.toString().substring(5);
+    }
+  }
+
+  Future<void> updateOrder(OrderModel newOrder) async {
+    try {
+      // 1. Get existing order from Firestore
+      DocumentSnapshot doc = await _firestore.collection(collectionName).doc(newOrder.id).get();
+      if (!doc.exists) {
+        throw Exception('Order not found');
+      }
+      OrderModel oldOrder = OrderModel.fromFirestore(doc);
+
+      // 2. Reverse old stock changes
+      for (var item in oldOrder.items) {
+        if (oldOrder.creatorRole == 'distributor') {
+          await _inventoryRepository.updateStock(oldOrder.createdBy, item.productId, item.productName, item.quantity);
+        } else if (oldOrder.creatorRole == 'admin' && oldOrder.isSupplyOrder) {
+          await _inventoryRepository.updateStock(oldOrder.targetUserId, item.productId, item.productName, -item.quantity);
+        }
+        if (oldOrder.creatorRole == 'admin') {
+          await _productionRepository.updateFactoryStock(item.productId, item.productName, item.quantity);
+        }
+      }
+
+      // 3. Apply new stock changes
+      for (var item in newOrder.items) {
+        if (newOrder.creatorRole == 'distributor') {
+          await _inventoryRepository.updateStock(newOrder.createdBy, item.productId, item.productName, -item.quantity);
+        } else if (newOrder.creatorRole == 'admin' && newOrder.isSupplyOrder) {
+          await _inventoryRepository.updateStock(newOrder.targetUserId, item.productId, item.productName, item.quantity);
+        }
+        if (newOrder.creatorRole == 'admin') {
+          await _productionRepository.updateFactoryStock(item.productId, item.productName, -item.quantity);
+        }
+      }
+
+      // 4. Update order in Firestore
+      await _firestore.collection(collectionName).doc(newOrder.id).update(newOrder.toMap());
+    } catch (e) {
+      throw Exception('Failed to update order: $e');
     }
   }
 

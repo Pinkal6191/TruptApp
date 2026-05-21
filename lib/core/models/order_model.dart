@@ -24,6 +24,8 @@ class OrderModel {
   final double paidAmount;
   final DateTime createdAt;
   final String orderReference; // 'Direct (Online / Call)' or Partner's name
+  final String additionalNote;
+  final double remainingAmount;
 
   OrderModel({
     required this.id,
@@ -48,7 +50,9 @@ class OrderModel {
     this.paidAmount = 0.0,
     required this.createdAt,
     this.orderReference = 'Direct (Online / Call)',
-  });
+    this.additionalNote = '',
+    double? remainingAmount,
+  }) : this.remainingAmount = remainingAmount ?? (finalAmount - paidAmount);
 
   Map<String, dynamic> toMap() {
     return {
@@ -70,14 +74,18 @@ class OrderModel {
       'finalAmount': finalAmount,
       'deliveryStatus': deliveryStatus,
       'paymentStatus': paymentStatus,
-       'paidAmount': paidAmount,
+      'paidAmount': paidAmount,
+      'remainingAmount': remainingAmount,
       'createdAt': Timestamp.fromDate(createdAt),
       'orderReference': orderReference,
+      'additionalNote': additionalNote,
     };
   }
 
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> map = doc.data() as Map<String, dynamic>;
+    double finalAmt = (map['finalAmount'] ?? 0).toDouble();
+    double paidAmt = (map['paidAmount'] ?? 0).toDouble();
     return OrderModel(
       id: doc.id,
       createdBy: map['createdBy'] ?? '',
@@ -97,12 +105,14 @@ class OrderModel {
       subtotal: (map['subtotal'] ?? 0).toDouble(),
       gstAmount: (map['gstAmount'] ?? 0).toDouble(),
       discount: (map['discount'] ?? 0).toDouble(),
-      finalAmount: (map['finalAmount'] ?? 0).toDouble(),
+      finalAmount: finalAmt,
       deliveryStatus: map['deliveryStatus'] ?? 'Pending',
       paymentStatus: map['paymentStatus'] ?? 'Pending',
-      paidAmount: (map['paidAmount'] ?? 0).toDouble(),
+      paidAmount: paidAmt,
+      remainingAmount: (map['remainingAmount'] ?? (finalAmt - paidAmt)).toDouble(),
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       orderReference: map['orderReference'] ?? 'Direct (Online / Call)',
+      additionalNote: map['additionalNote'] ?? '',
     );
   }
 }
