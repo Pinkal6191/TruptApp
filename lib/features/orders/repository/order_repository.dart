@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_model.dart';
 import '../../inventory/repository/inventory_repository.dart';
+import '../../inventory/repository/production_repository.dart';
 
 class OrderRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String collectionName = 'orders';
   final InventoryRepository _inventoryRepository = InventoryRepository();
+  final ProductionRepository _productionRepository = ProductionRepository();
 
   Future<void> createOrder(OrderModel order) async {
     try {
@@ -19,6 +21,11 @@ class OrderRepository {
         } else if (order.creatorRole == 'admin' && order.isSupplyOrder) {
           // Admin supplying to Distributor -> Increase Distributor's stock immediately
           await _inventoryRepository.updateStock(order.targetUserId, item.productId, item.productName, item.quantity);
+        }
+
+        // Factory Stock Maintenance for Admin dispatches (both Supply & Retail/Direct orders)
+        if (order.creatorRole == 'admin') {
+          await _productionRepository.updateFactoryStock(item.productId, item.productName, -item.quantity);
         }
       }
     } catch (e) {
@@ -151,6 +158,11 @@ class OrderRepository {
         } else if (order.creatorRole == 'admin' && order.isSupplyOrder) {
           // Reverse admin supplying to Distributor -> Decrease Distributor's stock back
           await _inventoryRepository.updateStock(order.targetUserId, item.productId, item.productName, -item.quantity);
+        }
+
+        // Reverse Factory Stock Maintenance for Admin dispatches
+        if (order.creatorRole == 'admin') {
+          await _productionRepository.updateFactoryStock(item.productId, item.productName, item.quantity);
         }
       }
     } catch (e) {

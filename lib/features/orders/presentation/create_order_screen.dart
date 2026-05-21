@@ -211,8 +211,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     if (userRole == 'admin') {
       if (widget.isRetailOrder) {
-        if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name and Mobile Number')));
+        if (_shopNameController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name')));
           return;
         }
         isSupply = false;
@@ -248,8 +248,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         }
       }
     } else {
-      if (_shopNameController.text.isEmpty || _mobileController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name and Mobile Number')));
+      if (_shopNameController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Shop Name')));
         return;
       }
       finalReference = userName;
@@ -799,7 +799,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     final mobileField = TextField(
       controller: _mobileController,
-      decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), isDense: true),
+      decoration: const InputDecoration(labelText: 'Mobile Number (Optional)', border: OutlineInputBorder(), isDense: true),
       keyboardType: TextInputType.phone,
     );
 

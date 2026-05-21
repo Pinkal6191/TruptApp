@@ -20,6 +20,11 @@ import 'product_management_screen.dart';
 import 'admin_reports_screen.dart';
 import 'user_management_screen.dart';
 import 'customer_list_screen.dart';
+import '../../inventory/presentation/raw_materials_screen.dart';
+import '../../inventory/presentation/production_logs_screen.dart';
+import '../../inventory/presentation/factory_inventory_screen.dart';
+import '../../inventory/repository/production_repository.dart';
+import '../../../core/models/raw_material_model.dart';
 import '../../../core/services/database_maintenance_service.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/regular_customers_graph.dart';
@@ -80,6 +85,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 const Text('Administrator Control Center', style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 24),
+
+                StreamBuilder<List<RawMaterialModel>>(
+                  stream: ProductionRepository().watchRawMaterials(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final lowStockItems = snapshot.data!
+                          .where((m) => m.stockCount <= m.minReorderLevel)
+                          .toList();
+                      if (lowStockItems.isNotEmpty) {
+                        final names = lowStockItems.map((m) => m.name).join(', ');
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: InkWell(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Low Stock Warning!',
+                                        style: TextStyle(color: Color(0xFF991B1B), fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'The following raw materials are below minimum levels: $names. Tap to manage.',
+                                        style: const TextStyle(color: Color(0xFF7F1D1D), fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFEF4444)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                    return const SizedBox();
+                  },
+                ),
 
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -237,6 +292,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         Icons.analytics,
                         Colors.indigo,
                         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportsScreen())),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Production',
+                        'Log daily batch runs',
+                        Icons.precision_manufacturing,
+                        Colors.blue,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductionLogsScreen())),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Raw Stock',
+                        'Manage raw materials',
+                        Icons.science,
+                        Colors.teal,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Factory Stock',
+                        'Warehouse stock counts',
+                        Icons.warehouse,
+                        Colors.deepOrange,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FactoryInventoryScreen())),
                       ),
                     ),
                   ],
