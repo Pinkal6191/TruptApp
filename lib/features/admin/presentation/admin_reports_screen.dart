@@ -119,25 +119,87 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     return resultList;
   }
 
+  String _getDateRangeDescription() {
+    if (_dateRange == null) {
+      return 'All Time Report';
+    }
+    
+    final start = _dateRange!.start;
+    final end = _dateRange!.end;
+    
+    bool isLastDayOfMonth(DateTime date) {
+      final nextMonth = DateTime(date.year, date.month + 1, 1);
+      final lastDay = nextMonth.subtract(const Duration(days: 1));
+      return date.day == lastDay.day;
+    }
+    
+    // Check for Full Calendar Month (e.g. 1st to end of the month)
+    if (start.day == 1 && isLastDayOfMonth(end) && start.month == end.month && start.year == end.year) {
+      return 'Monthly Report - ${DateFormat('MMMM yyyy').format(start)}';
+    }
+    
+    // Check for Indian Financial Year (April 1 to March 31 of next year)
+    if (start.day == 1 && start.month == DateTime.april && end.day == 31 && end.month == DateTime.march && end.year == start.year + 1) {
+      final fyStart = start.year;
+      final fyEnd = (start.year + 1) % 100;
+      return 'Financial Year Report - FY $fyStart-${fyEnd.toString().padLeft(2, '0')}';
+    }
+    
+    // Check for Calendar Year (Jan 1 to Dec 31)
+    if (start.day == 1 && start.month == DateTime.january && end.day == 31 && end.month == DateTime.december && start.year == end.year) {
+      return 'Yearly Report - ${start.year}';
+    }
+    
+    // Custom Date Range fallback
+    final startStr = DateFormat('dd/MM/yyyy').format(start);
+    final endStr = DateFormat('dd/MM/yyyy').format(end);
+    return 'Period: $startStr to $endStr';
+  }
+
+  String _getReportTypeName() {
+    switch (_reportType) {
+      case 'order_wise':
+        return 'Order-wise (GST Detailed)';
+      case 'partner':
+        return 'Partner-wise Summary';
+      case 'distributor':
+        return 'Distributor-wise Summary';
+      case 'customer':
+        return 'Customer-wise Summary';
+      case 'all':
+      default:
+        return 'All Orders Summary';
+    }
+  }
+
   Future<void> _exportCsv(List<Map<String, dynamic>> data) async {
-    List<List<dynamic>> rows;
+    List<List<dynamic>> rows = [
+      ['TRUPT ENTERPRISE'],
+      ['Address: 4160, B/H Mahalaxmi Cold Storage, Boriavi, Anand - 387310'],
+      ['Phone: +91 96624 98664, +91 98793 95727'],
+      ['Email: truptenterprise26@gmail.com', 'Website: truptenterprise.com'],
+      ['GSTIN: 24AAZFT5241K1ZK'],
+      [],
+      ['BUSINESS REPORT: ${_getReportTypeName()}'],
+      ['Period: ${_getDateRangeDescription()}'],
+      ['Generated On: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}'],
+      [],
+    ];
 
     if (_reportType == 'order_wise') {
-      rows = [
-        [
-          'Invoice No',
-          'Date',
-          'Customer/Shop Name',
-          'GST Number',
-          'Subtotal (Excl. GST)',
-          'GST Rate',
-          'GST Amount',
-          'Total (Incl. GST)',
-          'Paid Amount',
-          'Balance Amount',
-          'Payment Status'
-        ]
-      ];
+      rows.add([
+        'Invoice No',
+        'Date',
+        'Customer/Shop Name',
+        'GST Number',
+        'Subtotal (Excl. GST)',
+        'GST Rate',
+        'GST Amount',
+        'Total (Incl. GST)',
+        'Paid Amount',
+        'Balance Amount',
+        'Payment Status'
+      ]);
 
       for (var row in data) {
         double subtotal = row['subtotal'] ?? 0.0;
@@ -161,9 +223,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ]);
       }
     } else {
-      rows = [
-        ['Name', 'Total Orders', 'Total Sales', 'Total Paid', 'Balance']
-      ];
+      rows.add(['Name', 'Total Orders', 'Total Sales', 'Total Paid', 'Balance']);
 
       for (var row in data) {
         double sales = row['sales'];
@@ -196,28 +256,73 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         pageFormat: PdfPageFormat.a4.landscape,
         build: (pw.Context context) {
           return [
-            pw.Text('Trupt Enterprise - Business Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-            pw.SizedBox(height: 8),
-            pw.Text('Report Type: ${_reportType.toUpperCase()}'),
-            if (_dateRange != null)
-              pw.Text('Date Range: ${DateFormat('dd MMM yyyy').format(_dateRange!.start)} to ${DateFormat('dd MMM yyyy').format(_dateRange!.end)}'),
-            pw.SizedBox(height: 16),
-            pw.Text('Total Sales: Rs. ${totalSales.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 24),
+            // Company and Report Header Info
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Left: Company Info
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('TRUPT ENTERPRISE', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('4160, B/H Mahalaxmi Cold Storage, Boriavi, Anand - 387310', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text('Phone: +91 96624 98664, +91 98793 95727', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text('Email: truptenterprise26@gmail.com | Website: truptenterprise.com', style: const pw.TextStyle(fontSize: 8)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('GSTIN: 24AAZFT5241K1ZK', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                  ],
+                ),
+                // Right: Report Details
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('BUSINESS REPORT', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Report Type: ${_getReportTypeName()}', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(_getDateRangeDescription(), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                    pw.Text('Generated On: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+            pw.Divider(thickness: 1, color: PdfColors.grey300),
+            pw.SizedBox(height: 10),
+
+            // Summary metrics
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Total Sales: Rs. ${totalSales.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                pw.Text('Total Records: ${data.length}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Main Table
             pw.TableHelper.fromTextArray(
               headers: _reportType == 'order_wise'
-                  ? ['Inv No', 'Date', 'Customer/Shop', 'Subtotal', 'GST (5%)', 'Total', 'Paid']
+                  ? ['Inv No', 'Date', 'Customer/Shop', 'GST Number', 'Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']
                   : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
               data: data.map((row) {
                 if (_reportType == 'order_wise') {
+                  final double subtotal = row['subtotal'] ?? 0.0;
+                  final double gstAmount = row['gstAmount'] ?? 0.0;
+                  final double sales = row['sales'] ?? 0.0;
+                  final double paid = row['paid'] ?? 0.0;
+                  final double balance = sales - paid;
                   return [
                     row['invoiceNumber'] ?? '',
                     row['date'] ?? '',
                     row['name'] ?? '',
-                    'Rs. ${(row['subtotal'] as double).toStringAsFixed(2)}',
-                    'Rs. ${(row['gstAmount'] as double).toStringAsFixed(2)}',
-                    'Rs. ${(row['sales'] as double).toStringAsFixed(2)}',
-                    'Rs. ${(row['paid'] as double).toStringAsFixed(2)}',
+                    row['customerGst'] ?? 'N/A',
+                    'Rs. ${subtotal.toStringAsFixed(2)}',
+                    'Rs. ${gstAmount.toStringAsFixed(2)}',
+                    'Rs. ${sales.toStringAsFixed(2)}',
+                    'Rs. ${paid.toStringAsFixed(2)}',
+                    'Rs. ${balance.toStringAsFixed(2)}',
                   ];
                 } else {
                   return [
@@ -229,17 +334,20 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   ];
                 }
               }).toList(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
               headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
+              cellStyle: const pw.TextStyle(fontSize: 7),
               cellAlignments: _reportType == 'order_wise'
                   ? {
                       0: pw.Alignment.centerLeft,
                       1: pw.Alignment.center,
                       2: pw.Alignment.centerLeft,
-                      3: pw.Alignment.centerRight,
+                      3: pw.Alignment.center,
                       4: pw.Alignment.centerRight,
                       5: pw.Alignment.centerRight,
                       6: pw.Alignment.centerRight,
+                      7: pw.Alignment.centerRight,
+                      8: pw.Alignment.centerRight,
                     }
                   : {
                       0: pw.Alignment.centerLeft,
