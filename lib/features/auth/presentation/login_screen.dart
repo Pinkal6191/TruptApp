@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Logo container with custom glowing neon blue shadow
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
@@ -129,12 +129,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.asset(
                         'assets/images/logo.png',
                         height: 120,
-                        width: 120,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
