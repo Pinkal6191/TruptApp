@@ -26,6 +26,7 @@ class OrderModel {
   final String orderReference; // 'Direct (Online / Call)' or Partner's name
   final String additionalNote;
   final double remainingAmount;
+  final String referredPartnerId;
 
   OrderModel({
     required this.id,
@@ -51,6 +52,7 @@ class OrderModel {
     required this.createdAt,
     this.orderReference = 'Direct (Online / Call)',
     this.additionalNote = '',
+    this.referredPartnerId = '',
     double? remainingAmount,
   }) : this.remainingAmount = remainingAmount ?? (finalAmount - paidAmount);
 
@@ -79,6 +81,7 @@ class OrderModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'orderReference': orderReference,
       'additionalNote': additionalNote,
+      'referredPartnerId': referredPartnerId,
     };
   }
 
@@ -113,6 +116,7 @@ class OrderModel {
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       orderReference: map['orderReference'] ?? 'Direct (Online / Call)',
       additionalNote: map['additionalNote'] ?? '',
+      referredPartnerId: map['referredPartnerId'] ?? '',
     );
   }
 }

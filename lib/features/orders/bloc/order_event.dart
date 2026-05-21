@@ -4,13 +4,15 @@ abstract class OrderEvent {}
 
 class LoadOrders extends OrderEvent {
   final String? userId; // If null, load all (for admin)
-  LoadOrders({this.userId});
+  final String? userName;
+  LoadOrders({this.userId, this.userName});
 }
 
 class LoadAllOrders extends OrderEvent {}
 class WatchOrders extends OrderEvent {
   final String? userId;
-  WatchOrders({this.userId});
+  final String? userName;
+  WatchOrders({this.userId, this.userName});
 }
 class OrdersUpdated extends OrderEvent {
   final List<OrderModel> orders;
@@ -34,12 +36,14 @@ class UpdateOrderStatus extends OrderEvent {
   final String statusType; // 'deliveryStatus' or 'paymentStatus'
   final String newStatus;
   final String? userId;
+  final String? userName;
 
   UpdateOrderStatus({
     required this.orderId,
     required this.statusType,
     required this.newStatus,
     this.userId,
+    this.userName,
   });
 }
 
@@ -48,21 +52,25 @@ class UpdateOrderPayment extends OrderEvent {
   final double paidAmount;
   final String paymentStatus;
   final String? userId;
+  final String? userName;
 
   UpdateOrderPayment({
     required this.orderId,
     required this.paidAmount,
     required this.paymentStatus,
     this.userId,
+    this.userName,
   });
 }
 
 class DeleteOrder extends OrderEvent {
   final OrderModel order;
   final String? userId;
+  final String? userName;
 
   DeleteOrder({
     required this.order,
     this.userId,
+    this.userName,
   });
 }

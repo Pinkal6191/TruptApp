@@ -244,6 +244,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String displayPartnerName = userName;
     bool isSupply = false;
     String finalReference = 'Direct (Online / Call)';
+    String finalReferredPartnerId = '';
 
     if (userRole == 'admin') {
       if (widget.isRetailOrder) {
@@ -263,6 +264,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           // Credit this order to the referred partner, not the admin
           displayPartnerName = _selectedPartnerReference!.name;
           finalReference = _selectedPartnerReference!.name;
+          finalReferredPartnerId = _selectedPartnerReference!.uid;
         }
       } else {
         if (_selectedDistributor == null) {
@@ -281,6 +283,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           // Credit this supply to the referred partner
           displayPartnerName = _selectedPartnerReference!.name;
           finalReference = _selectedPartnerReference!.name;
+          finalReferredPartnerId = _selectedPartnerReference!.uid;
         }
       }
     } else {
@@ -289,6 +292,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         return;
       }
       finalReference = userName;
+      if (userRole == 'partner') {
+        finalReferredPartnerId = uid;
+      }
     }
 
     double totalWithGst = 0;
@@ -350,6 +356,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       paidAmount: currentPaidAmount,
       paymentStatus: finalPaymentStatus,
       additionalNote: _additionalNoteController.text.trim(),
+      referredPartnerId: widget.existingOrder?.referredPartnerId ?? finalReferredPartnerId,
     );
 
     if (widget.existingOrder != null) {

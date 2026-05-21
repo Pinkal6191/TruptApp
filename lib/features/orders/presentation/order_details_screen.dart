@@ -30,11 +30,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   void _updateDeliveryStatus(String newStatus) {
     final authState = context.read<AuthBloc>().state;
     final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+    final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
     context.read<OrderBloc>().add(UpdateOrderStatus(
           orderId: _currentOrder.id,
           statusType: 'deliveryStatus',
           newStatus: newStatus,
           userId: userId,
+          userName: userName,
         ));
     Navigator.pop(context);
   }
@@ -194,6 +196,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         }
                         final authState = context.read<AuthBloc>().state;
                         final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                        final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
                         
                         double totalPaidAmount = previouslyPaid + amountPaidNow;
                         if (totalPaidAmount > totalBill) {
@@ -205,6 +208,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               paidAmount: totalPaidAmount,
                               paymentStatus: calculatedStatus,
                               userId: userId,
+                              userName: userName,
                             ));
                         Navigator.pop(context);
                       },
@@ -622,11 +626,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       ),
                       onPressed: () {
                         final userId = isAdmin ? null : authState.user.uid;
+                        final userName = isAdmin ? null : authState.user.name;
                         context.read<OrderBloc>().add(UpdateOrderPayment(
                               orderId: _currentOrder.id,
                               paidAmount: 0.0,
                               paymentStatus: 'Pending',
                               userId: userId,
+                              userName: userName,
                             ));
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -676,7 +682,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               style: TextButton.styleFrom(foregroundColor: Colors.red),
                               onPressed: () {
                                 final userId = isAdmin ? null : authState.user.uid;
-                                context.read<OrderBloc>().add(DeleteOrder(order: _currentOrder, userId: userId));
+                                final userName = isAdmin ? null : authState.user.name;
+                                context.read<OrderBloc>().add(DeleteOrder(
+                                      order: _currentOrder,
+                                      userId: userId,
+                                      userName: userName,
+                                    ));
                                 Navigator.pop(dialogContext); // Close dialog
                                 Navigator.pop(context); // Go back to order history screen
                                 ScaffoldMessenger.of(context).showSnackBar(

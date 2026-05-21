@@ -25,7 +25,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       if (authState.user.role == 'admin') {
         context.read<OrderBloc>().add(LoadOrders()); // Load all for admin
       } else {
-        context.read<OrderBloc>().add(LoadOrders(userId: authState.user.uid));
+        context.read<OrderBloc>().add(LoadOrders(
+          userId: authState.user.uid,
+          userName: authState.user.name,
+        ));
       }
     }
   }
@@ -224,6 +227,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       onPressed: () {
                         final authState = context.read<AuthBloc>().state;
                         final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                        final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
                         showDialog(
                           context: context,
                           builder: (dialogContext) => AlertDialog(
@@ -237,7 +241,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               TextButton(
                                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                                 onPressed: () {
-                                  context.read<OrderBloc>().add(DeleteOrder(order: order, userId: userId));
+                                  context.read<OrderBloc>().add(DeleteOrder(
+                                        order: order,
+                                        userId: userId,
+                                        userName: userName,
+                                      ));
                                   Navigator.pop(dialogContext);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Deleting order...')),
@@ -259,7 +267,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         onPressed: () {
                           final authState = context.read<AuthBloc>().state;
                           final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          context.read<OrderBloc>().add(UpdateOrderStatus(orderId: order.id, statusType: 'deliveryStatus', newStatus: 'Delivered', userId: userId));
+                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                          context.read<OrderBloc>().add(UpdateOrderStatus(
+                                orderId: order.id,
+                                statusType: 'deliveryStatus',
+                                newStatus: 'Delivered',
+                                userId: userId,
+                                userName: userName,
+                              ));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
                         },
                       ),
@@ -272,7 +287,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         onPressed: () {
                           final authState = context.read<AuthBloc>().state;
                           final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: order.finalAmount, paymentStatus: 'Paid', userId: userId));
+                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                          context.read<OrderBloc>().add(UpdateOrderPayment(
+                                orderId: order.id,
+                                paidAmount: order.finalAmount,
+                                paymentStatus: 'Paid',
+                                userId: userId,
+                                userName: userName,
+                              ));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
                         },
                       )
@@ -284,7 +306,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         onPressed: () {
                           final authState = context.read<AuthBloc>().state;
                           final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          context.read<OrderBloc>().add(UpdateOrderPayment(orderId: order.id, paidAmount: 0.0, paymentStatus: 'Pending', userId: userId));
+                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                          context.read<OrderBloc>().add(UpdateOrderPayment(
+                                orderId: order.id,
+                                paidAmount: 0.0,
+                                paymentStatus: 'Pending',
+                                userId: userId,
+                                userName: userName,
+                              ));
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Pending (Unpaid)')));
                         },
                       ),

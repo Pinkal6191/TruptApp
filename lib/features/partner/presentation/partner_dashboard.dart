@@ -28,7 +28,10 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
     super.initState();
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      context.read<OrderBloc>().add(WatchOrders(userId: authState.user.uid));
+      context.read<OrderBloc>().add(WatchOrders(
+        userId: authState.user.uid,
+        userName: authState.user.name,
+      ));
     }
   }
 

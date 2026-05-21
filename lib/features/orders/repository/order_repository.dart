@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_model.dart';
 import '../../inventory/repository/inventory_repository.dart';
@@ -33,35 +34,80 @@ class OrderRepository {
     }
   }
 
-  // Version: 1.0.1 - Client side sorting active
-  Future<List<OrderModel>> getOrdersByUser(String userId) async {
+  // Version: 1.0.2 - Support referredPartnerId and partnerName fallbacks
+  Future<List<OrderModel>> getOrdersByUser(String userId, {String? userName}) async {
     try {
-      QuerySnapshot snapshot = await _firestore
-          .collection(collectionName)
-          .where('createdBy', isEqualTo: userId)
-          .get();
+      final List<Future<QuerySnapshot>> futures = [
+        _firestore.collection(collectionName).where('createdBy', isEqualTo: userId).get(),
+        _firestore.collection(collectionName).where('referredPartnerId', isEqualTo: userId).get(),
+      ];
       
-      final orders = snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+      if (userName != null && userName.isNotEmpty) {
+        futures.add(_firestore.collection(collectionName).where('partnerName', isEqualTo: userName).get());
+      }
       
-      // Sort client-side to avoid Firestore Index requirement
+      final snapshots = await Future.wait(futures);
+      final map = <String, OrderModel>{};
+      for (var snap in snapshots) {
+        for (var doc in snap.docs) {
+          final order = OrderModel.fromFirestore(doc);
+          map[order.id] = order;
+        }
+      }
+      
+      final orders = map.values.toList();
       orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
       return orders;
     } catch (e) {
       throw Exception('Failed to get user orders: $e');
     }
   }
 
-  Stream<List<OrderModel>> watchOrdersByUser(String userId) {
-    return _firestore
-        .collection(collectionName)
-        .where('createdBy', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) {
-          final orders = snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
-          orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return orders;
-        });
+  Stream<List<OrderModel>> watchOrdersByUser(String userId, {String? userName}) {
+    final controller = StreamController<List<OrderModel>>();
+    final List<StreamSubscription<QuerySnapshot>> subscriptions = [];
+    final Map<int, List<OrderModel>> lists = {};
+    
+    void emitCombined() {
+      final map = <String, OrderModel>{};
+      for (var list in lists.values) {
+        for (var o in list) {
+          map[o.id] = o;
+        }
+      }
+      final combined = map.values.toList();
+      combined.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (!controller.isClosed) {
+        controller.add(combined);
+      }
+    }
+    
+    final streams = [
+      _firestore.collection(collectionName).where('createdBy', isEqualTo: userId).snapshots(),
+      _firestore.collection(collectionName).where('referredPartnerId', isEqualTo: userId).snapshots(),
+    ];
+    
+    if (userName != null && userName.isNotEmpty) {
+      streams.add(_firestore.collection(collectionName).where('partnerName', isEqualTo: userName).snapshots());
+    }
+    
+    for (int i = 0; i < streams.length; i++) {
+      final sub = streams[i].listen((snapshot) {
+        lists[i] = snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+        emitCombined();
+      }, onError: (err) {
+        if (!controller.isClosed) controller.addError(err);
+      });
+      subscriptions.add(sub);
+    }
+    
+    controller.onCancel = () {
+      for (var sub in subscriptions) {
+        sub.cancel();
+      }
+    };
+    
+    return controller.stream;
   }
 
   Future<List<OrderModel>> getAllOrders() async {
