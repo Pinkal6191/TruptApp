@@ -54,16 +54,19 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       ),
       builder: (context) {
         double amountPaidNow = currentPending;
-        
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            double remainingBalance = currentPending - amountPaidNow;
-            if (remainingBalance < 0) remainingBalance = 0;
+            final double totalPaidAfter = previouslyPaid + amountPaidNow;
+            final double netRemaining = totalBill - totalPaidAfter; // negative = overpaid
+            final bool isOverpaid = netRemaining < 0;
+            final double returnToCustomer = isOverpaid ? netRemaining.abs() : 0.0;
+            final double stillPending = isOverpaid ? 0.0 : netRemaining;
 
             String calculatedStatus = 'Paid';
-            if (previouslyPaid + amountPaidNow >= totalBill) {
+            if (totalPaidAfter >= totalBill) {
               calculatedStatus = 'Paid';
-            } else if (previouslyPaid + amountPaidNow > 0) {
+            } else if (totalPaidAfter > 0) {
               calculatedStatus = 'Partial';
             } else {
               calculatedStatus = 'Pending';
@@ -85,6 +88,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
                   ),
                   const SizedBox(height: 16),
+                  // Bill summary
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -124,66 +128,118 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     initialValue: currentPending.toStringAsFixed(2),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
-                      labelText: 'Amount Paid Now (₹)',
+                      labelText: 'Amount Received from Customer (₹)',
                       border: OutlineInputBorder(),
+                      helperText: 'Enter the exact cash received (can be more than pending)',
                     ),
                     onChanged: (val) {
                       setModalState(() {
-                        if (val.trim().isEmpty) {
-                          amountPaidNow = 0.0;
-                        } else {
-                          amountPaidNow = double.tryParse(val) ?? 0.0;
-                        }
+                        amountPaidNow = double.tryParse(val.trim()) ?? 0.0;
                       });
                     },
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: remainingBalance > 0 ? Colors.orange.shade50 : Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: remainingBalance > 0 ? Colors.orange.shade200 : Colors.green.shade200,
+                  // Result card — changes color based on overpaid / partial / paid
+                  if (isOverpaid) ...[
+                    // OVERPAYMENT — show Return to Customer
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Bill Fully Settled ✓', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                  const SizedBox(height: 2),
+                                  const Text('Return to Customer:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              Text(
+                                '₹${returnToCustomer.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Customer gave:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                Text('₹${(previouslyPaid + amountPaidNow).toStringAsFixed(2)}',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple.shade900)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Remaining Balance after payment:', style: TextStyle(fontSize: 12, color: Colors.black87)),
-                            const SizedBox(height: 4),
-                            Text(
-                              '₹${remainingBalance.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: remainingBalance > 0 ? Colors.orange.shade800 : Colors.green.shade800,
+                  ] else ...[
+                    // Normal — show remaining pending
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: stillPending > 0 ? Colors.orange.shade50 : Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: stillPending > 0 ? Colors.orange.shade200 : Colors.green.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Remaining after payment:', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '₹${stillPending.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: stillPending > 0 ? Colors.orange.shade800 : Colors.green.shade800,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Chip(
-                          label: Text(calculatedStatus),
-                          backgroundColor: remainingBalance > 0 ? Colors.orange.shade100 : Colors.green.shade100,
-                          labelStyle: TextStyle(
-                            color: remainingBalance > 0 ? Colors.orange.shade900 : Colors.green.shade900,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            ],
                           ),
-                        ),
-                      ],
+                          Chip(
+                            label: Text(calculatedStatus),
+                            backgroundColor: stillPending > 0 ? Colors.orange.shade100 : Colors.green.shade100,
+                            labelStyle: TextStyle(
+                              color: stillPending > 0 ? Colors.orange.shade900 : Colors.green.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: const Color(0xFF10B981),
+                        backgroundColor: isOverpaid ? Colors.purple.shade600 : const Color(0xFF10B981),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -197,22 +253,34 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         final authState = context.read<AuthBloc>().state;
                         final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
                         final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                        
-                        double totalPaidAmount = previouslyPaid + amountPaidNow;
-                        if (totalPaidAmount > totalBill) {
-                          totalPaidAmount = totalBill;
-                        }
+
+                        // Store the actual total received (including overpayment) — no cap
+                        final double totalReceivedAmount = previouslyPaid + amountPaidNow;
 
                         context.read<OrderBloc>().add(UpdateOrderPayment(
                               orderId: _currentOrder.id,
-                              paidAmount: totalPaidAmount,
+                              paidAmount: totalReceivedAmount,
                               paymentStatus: calculatedStatus,
                               userId: userId,
                               userName: userName,
                             ));
                         Navigator.pop(context);
+                        if (isOverpaid) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Payment recorded. Return ₹${returnToCustomer.toStringAsFixed(2)} to customer.'),
+                              backgroundColor: Colors.purple.shade700,
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                        }
                       },
-                      child: const Text('Confirm Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        isOverpaid
+                            ? 'Confirm & Return ₹${returnToCustomer.toStringAsFixed(2)}'
+                            : 'Confirm Payment',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -427,11 +495,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Remaining Balance', style: TextStyle(color: Colors.white70)),
                           Text(
-                            '₹${_currentOrder.remainingAmount.toStringAsFixed(2)}',
+                            _currentOrder.remainingAmount < 0 ? 'Return to Customer' : 'Remaining Balance',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            _currentOrder.remainingAmount < 0
+                                ? '₹${_currentOrder.remainingAmount.abs().toStringAsFixed(2)}'
+                                : '₹${_currentOrder.remainingAmount.toStringAsFixed(2)}',
                             style: TextStyle(
-                              color: _currentOrder.remainingAmount > 0 ? Colors.orangeAccent : Colors.greenAccent,
+                              color: _currentOrder.remainingAmount < 0
+                                  ? Colors.purpleAccent
+                                  : _currentOrder.remainingAmount > 0
+                                      ? Colors.orangeAccent
+                                      : Colors.greenAccent,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

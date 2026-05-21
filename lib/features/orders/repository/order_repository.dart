@@ -150,10 +150,11 @@ class OrderRepository {
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         final double finalAmount = (data['finalAmount'] ?? 0.0).toDouble();
+        // Store actual remaining (can be negative to indicate overpayment/change due to customer)
         final double remaining = finalAmount - paidAmount;
         await _firestore.collection(collectionName).doc(orderId).update({
           'paidAmount': paidAmount,
-          'remainingAmount': remaining >= 0 ? remaining : 0.0,
+          'remainingAmount': remaining,
           'paymentStatus': paymentStatus,
         });
       }

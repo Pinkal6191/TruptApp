@@ -81,7 +81,8 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                     if (state is OrdersLoaded) {
                       partnerOrders = state.orders;
                       totalOrders = state.orders.fold(0, (sum, o) => sum + o.finalAmount);
-                      pendingPayment = state.orders.fold(0, (sum, o) => sum + (o.finalAmount - o.paidAmount));
+                      // Only sum positive remaining; negative means customer overpaid (change to return)
+                      pendingPayment = state.orders.fold(0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
                     }
                     return Column(
                       children: [

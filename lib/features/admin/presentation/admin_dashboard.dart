@@ -234,7 +234,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     if (state is OrdersLoaded) {
                       for (var order in state.orders) {
                         totalCollected += order.paidAmount;
-                        totalPending += order.remainingAmount;
+                        // Only count positive remaining as pending; negative = overpaid (change to return)
+                        if (order.remainingAmount > 0) {
+                          totalPending += order.remainingAmount;
+                        }
                       }
                     }
                     return Row(
