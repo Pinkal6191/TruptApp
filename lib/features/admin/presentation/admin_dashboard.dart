@@ -23,6 +23,7 @@ import 'customer_list_screen.dart';
 import '../../../core/services/database_maintenance_service.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/regular_customers_graph.dart';
+import '../../../core/widgets/crate_sales_breakdown.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_state.dart';
 
@@ -253,6 +254,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       return Column(
                         children: [
                           SalesTrendGraph(orders: orderState.orders),
+                          const SizedBox(height: 16),
+                          CrateSalesBreakdown(orders: orderState.orders),
                           const SizedBox(height: 16),
                           RegularCustomersGraph(orders: orderState.orders),
                         ],

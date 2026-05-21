@@ -13,8 +13,8 @@ import '../../products/bloc/product_event.dart';
 import '../../inventory/bloc/inventory_bloc.dart';
 import '../../products/presentation/custom_price_screen.dart';
 import 'distributor_inventory_screen.dart';
-import '../../../core/models/order_model.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
+import '../../../core/widgets/crate_sales_breakdown.dart';
 
 class DistributorDashboard extends StatefulWidget {
   const DistributorDashboard({super.key});
@@ -109,6 +109,8 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                         if (state is OrdersLoaded && state.orders.isNotEmpty) ...[
                           const SizedBox(height: 20),
                           SalesTrendGraph(orders: state.orders),
+                          const SizedBox(height: 16),
+                          CrateSalesBreakdown(orders: state.orders),
                         ],
                       ],
                     );
