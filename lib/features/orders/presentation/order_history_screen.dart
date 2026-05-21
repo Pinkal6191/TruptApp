@@ -48,6 +48,67 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
+  Color _deliveryColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return const Color(0xFF10B981); // Emerald
+      case 'dispatched':
+        return const Color(0xFF3B82F6); // Azure
+      case 'pending':
+      default:
+        return const Color(0xFFF59E0B); // Amber
+    }
+  }
+
+  Color _paymentColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return const Color(0xFF10B981); // Emerald
+      case 'partial':
+        return const Color(0xFF3B82F6); // Azure
+      case 'pending':
+      default:
+        return const Color(0xFFEF4444); // Red/Amber
+    }
+  }
+
+  Widget _adminStatusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _adminAmountBadge(String text, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -374,10 +435,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       return const Center(child: Text('No orders found.'));
     }
 
-    // Group by creator name
+    // Group by partnerName
     final Map<String, List<OrderModel>> grouped = {};
     for (var order in orders) {
-      final name = order.partnerName; // In admin view, partnerName usually reflects the creator/target
+      final name = order.partnerName;
       grouped.putIfAbsent(name, () => []).add(order);
     }
 
@@ -388,13 +449,32 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         final creatorName = grouped.keys.elementAt(index);
         final creatorOrders = grouped[creatorName]!;
         final totalAmount = creatorOrders.fold(0.0, (sum, o) => sum + o.finalAmount);
+        final totalPending = creatorOrders.fold(0.0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ExpansionTile(
             title: Text(creatorName, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${creatorOrders.length} Orders • Total: ₹${totalAmount.toStringAsFixed(0)}'),
+            subtitle: Row(
+              children: [
+                Text('${creatorOrders.length} Orders • ₹${totalAmount.toStringAsFixed(0)}'),
+                if (totalPending > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Pending ₹${totalPending.toStringAsFixed(0)}',
+                      style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ],
+            ),
             children: [
               ListView.builder(
                 shrinkWrap: true,
@@ -402,11 +482,80 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 itemCount: creatorOrders.length,
                 itemBuilder: (context, subIndex) {
                   final order = creatorOrders[subIndex];
-                  return ListTile(
-                    title: Text(DateFormat('MMM dd, yyyy').format(order.createdAt)),
-                    subtitle: Text('Status: ${order.deliveryStatus}'),
-                    trailing: Text('₹${order.finalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  final customerDisplay = order.shopName.isNotEmpty ? order.shopName : '(No Shop Name)';
+                  final pending = order.remainingAmount;
+                  final isOverpaid = pending < 0;
+
+                  return InkWell(
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order))),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Row 1: Customer/Shop name + Bill amount
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  customerDisplay,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '₹${order.finalAmount.toStringAsFixed(0)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E3A8A)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Row 2: Date + Invoice number
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey.shade500),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat('dd MMM yyyy').format(order.createdAt),
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                              if (order.invoiceNumber.isNotEmpty) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.receipt_outlined, size: 12, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '#${order.invoiceNumber}',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Row 3: Delivery + Payment status badges + Due/Paid badge
+                          Row(
+                            children: [
+                              _adminStatusBadge(order.deliveryStatus, _deliveryColor(order.deliveryStatus)),
+                              const SizedBox(width: 6),
+                              _adminStatusBadge(order.paymentStatus, _paymentColor(order.paymentStatus)),
+                              const Spacer(),
+                              if (isOverpaid)
+                                _adminAmountBadge('Return ₹${pending.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
+                              else if (pending > 0)
+                                _adminAmountBadge('Due ₹${pending.toStringAsFixed(0)}', Colors.red.shade700, Colors.red.shade50)
+                              else
+                                _adminAmountBadge('Fully Paid ✓', Colors.green.shade700, Colors.green.shade50),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
