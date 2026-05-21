@@ -56,53 +56,53 @@
 
     .logo-wrapper {
       position: relative;
-      width: 130px;
-      height: 130px;
+      width: 159px;
+      height: 110px;
       margin-bottom: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
+      border-radius: 16px;
+      background: #2C2E33;
+      padding: 3px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5),
+                  0 0 30px rgba(56, 189, 248, 0.25);
+    }
+
+    /* Rotating background gradient border effect */
+    .logo-wrapper::before {
+      content: '';
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      background: conic-gradient(#38BDF8, #3B82F6, #6366F1, #38BDF8);
+      animation: rotateGlow 4s linear infinite;
+      z-index: 1;
+    }
+
+    .logo-wrapper::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      background: #2C2E33;
+      border-radius: 13px;
+      z-index: 1;
     }
 
     .logo-img {
-      width: 100px;
-      height: 100px;
-      border-radius: 24px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
+      border-radius: 13px;
       z-index: 2;
       animation: heartbeat 2.5s infinite ease-in-out;
     }
 
-    /* Rotating glowing outer accent ring */
-    .glowing-ring {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 130px;
-      height: 130px;
-      border-radius: 50%;
-      border: 3px solid transparent;
-      border-top-color: #38BDF8; /* Sky Blue */
-      border-bottom-color: #3B82F6; /* Royal Blue */
-      animation: rotateRing 3s linear infinite;
-      z-index: 1;
-      opacity: 0.85;
-    }
-
-    .glowing-ring::before {
-      content: "";
-      position: absolute;
-      top: -3px;
-      left: -3px;
-      right: -3px;
-      bottom: -3px;
-      border-radius: 50%;
-      border: 3px solid transparent;
-      border-left-color: #06B6D4; /* Cyan */
-      border-right-color: #6366F1; /* Indigo */
-      animation: rotateRing 2s linear infinite reverse;
-      opacity: 0.5;
+    @keyframes rotateGlow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     .title {
@@ -175,8 +175,7 @@
 <body>
   <div id="loading-container">
     <div class="logo-wrapper">
-      <div class="glowing-ring"></div>
-      <img class="logo-img" src="favicon.png" alt="Trupt Enterprise Logo">
+      <img class="logo-img" src="favicon.png?v=1.0.2" alt="Trupt Enterprise Logo">
     </div>
     <h1 class="title">Trupt Enterprise</h1>
     <p class="subtitle">Har Boond Mein Trupti</p>
