@@ -1,11 +1,11 @@
 {
-    "name": "trupt_enterprise",
-    "short_name": "trupt_enterprise",
+    "name": "Trupt Enterprise",
+    "short_name": "Trupt Enterprise",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Trupt Enterprise - Premium Wholesale Solutions",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
