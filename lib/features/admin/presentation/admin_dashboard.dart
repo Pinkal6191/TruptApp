@@ -241,11 +241,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 const SizedBox(height: 8),
                 BlocBuilder<OrderBloc, OrderState>(
-                  builder: (context, state) {
+                  builder: (context, orderState) {
                     double totalCollected = 0.0;
                     double totalPending = 0.0;
-                    if (state is OrdersLoaded) {
-                      for (var order in state.orders) {
+                    if (orderState is OrdersLoaded) {
+                      for (var order in orderState.orders) {
                         totalCollected += order.paidAmount;
                         // Only count positive remaining as pending; negative = overpaid (change to return)
                         if (order.remainingAmount > 0) {
@@ -253,26 +253,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         }
                       }
                     }
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _buildSummaryIndicatorCard(
-                            'Total Collected',
-                            '₹${totalCollected.toStringAsFixed(0)}',
-                            Icons.account_balance_wallet,
-                            const Color(0xFF10B981),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildSummaryIndicatorCard(
-                            'Total Pending',
-                            '₹${totalPending.toStringAsFixed(0)}',
-                            Icons.pending_actions,
-                            const Color(0xFFF59E0B),
-                          ),
-                        ),
-                      ],
+                    return BlocBuilder<ExpenseBloc, ExpenseState>(
+                      builder: (context, expenseState) {
+                        double totalExpense = 0.0;
+                        if (expenseState is ExpensesLoaded) {
+                          totalExpense = expenseState.expenses.fold(0.0, (sum, item) => sum + item.amount);
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'Total Collected',
+                                '₹${totalCollected.toStringAsFixed(0)}',
+                                Icons.account_balance_wallet,
+                                const Color(0xFF10B981),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'Total Pending',
+                                '₹${totalPending.toStringAsFixed(0)}',
+                                Icons.pending_actions,
+                                const Color(0xFFF59E0B),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'Total Expenses',
+                                '₹${totalExpense.toStringAsFixed(0)}',
+                                Icons.money_off,
+                                Colors.redAccent,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
