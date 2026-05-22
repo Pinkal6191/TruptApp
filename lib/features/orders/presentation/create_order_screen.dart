@@ -995,9 +995,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           },
           displayStringForOption: (CustomerModel option) => option.shopName,
           onSelected: (CustomerModel selection) {
-            _mobileController.text = selection.mobileNumber;
-            _addressController.text = selection.address;
-            _gstController.text = selection.gstNumber;
+            setState(() {
+              _mobileController.text = selection.mobileNumber;
+              _addressController.text = selection.address;
+              _gstController.text = selection.gstNumber;
+
+              if (selection.partnerId.isNotEmpty) {
+                try {
+                  final matchingPartner = _partners.firstWhere(
+                    (p) => p.uid == selection.partnerId,
+                  );
+                  _selectedReferenceType = 'Partner Referral';
+                  _selectedPartnerReference = matchingPartner;
+                } catch (_) {
+                  _selectedReferenceType = 'Direct (Online / Call)';
+                  _selectedPartnerReference = null;
+                }
+              } else {
+                _selectedReferenceType = 'Direct (Online / Call)';
+                _selectedPartnerReference = null;
+              }
+            });
           },
           optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<CustomerModel> onSelected, Iterable<CustomerModel> options) {
             return Align(
