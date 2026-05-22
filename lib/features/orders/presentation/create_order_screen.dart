@@ -205,6 +205,150 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
   }
 
+  /// Shows a dialog to edit both quantity and price together for a cart item.
+  void _showEditItemDialog(int index) {
+    final item = _cart[index];
+    final qtyController = TextEditingController(text: '${item.quantity}');
+    final priceController = TextEditingController(text: item.pricePerCrate.toStringAsFixed(0));
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note, color: Color(0xFF1E3A8A)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.productName,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Quantity (Crates)',
+                  prefixIcon: const Icon(Icons.inventory_2_outlined, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  isDense: true,
+                ),
+                validator: (val) {
+                  final n = int.tryParse(val?.trim() ?? '');
+                  if (n == null || n < 0) return 'Enter a valid quantity';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Price per Crate (₹)',
+                  prefixIcon: const Icon(Icons.currency_rupee, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  isDense: true,
+                ),
+                validator: (val) {
+                  final n = double.tryParse(val?.trim() ?? '');
+                  if (n == null || n < 0) return 'Enter a valid price';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+              // Live total preview
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: qtyController,
+                builder: (_, qtyVal, __) {
+                  return ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: priceController,
+                    builder: (_, priceVal, __) {
+                      final qty = int.tryParse(qtyVal.text.trim()) ?? 0;
+                      final price = double.tryParse(priceVal.text.trim()) ?? 0.0;
+                      final lineTotal = qty * price;
+                      return Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F4FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('$qty crates × ₹${price.toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                            Text('₹${lineTotal.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E3A8A))),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (item.quantity > 0)
+            TextButton(
+              onPressed: () {
+                _updateQuantity(index, 0); // remove item
+                Navigator.pop(ctx);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Remove'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              final newQty = int.parse(qtyController.text.trim());
+              final newPrice = double.parse(priceController.text.trim());
+              setState(() {
+                if (newQty <= 0) {
+                  _cart.removeAt(index);
+                } else {
+                  _cart[index] = OrderItemModel(
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantity: newQty,
+                    pricePerCrate: newPrice,
+                    distributorCost: item.distributorCost,
+                  );
+                }
+              });
+              Navigator.pop(ctx);
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _editPrice(int index) {
     final item = _cart[index];
     final controller = TextEditingController(text: item.pricePerCrate.toString());
@@ -446,51 +590,21 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('₹${item.pricePerCrate} x ${item.quantity}'),
+                            subtitle: Text('₹${item.pricePerCrate.toStringAsFixed(0)} × ${item.quantity} = ₹${(item.pricePerCrate * item.quantity).toStringAsFixed(0)}'),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                // Edit qty + price dialog
                                 IconButton(
-                                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                  icon: const Icon(Icons.edit_note, size: 22, color: Colors.blue),
                                   onPressed: () {
-                                    final controller = TextEditingController(text: item.pricePerCrate.toString());
-                                    showDialog(
-                                      context: context,
-                                      builder: (dialogContext) => AlertDialog(
-                                        title: Text('Edit Price: ${item.productName}'),
-                                        content: TextField(
-                                          controller: controller,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                          decoration: const InputDecoration(labelText: 'Negotiated Price (₹)'),
-                                        ),
-                                        actions: [
-                                          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              final newPrice = double.tryParse(controller.text.trim());
-                                              if (newPrice != null && newPrice >= 0) {
-                                                setState(() {
-                                                  _cart[index] = OrderItemModel(
-                                                    productId: item.productId,
-                                                    productName: item.productName,
-                                                    quantity: item.quantity,
-                                                    pricePerCrate: newPrice,
-                                                    distributorCost: item.distributorCost,
-                                                  );
-                                                });
-                                                setModalState(() {});
-                                                Navigator.pop(dialogContext);
-                                              }
-                                            },
-                                            child: const Text('Update Bill Price'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
+                                    Navigator.pop(context); // close sheet first
+                                    Future.delayed(const Duration(milliseconds: 100), () {
+                                      _showEditItemDialog(index);
+                                    });
                                   },
-                                  tooltip: 'Negotiate Price',
+                                  tooltip: 'Edit Qty & Price',
                                 ),
-                                const SizedBox(width: 4),
                                 IconButton(
                                   icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
                                   onPressed: () {
@@ -498,7 +612,33 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                     setModalState(() {});
                                   },
                                 ),
-                                Text('${item.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                // Inline tappable quantity
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Future.delayed(const Duration(milliseconds: 100), () {
+                                      _showEditItemDialog(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    constraints: const BoxConstraints(minWidth: 34),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: const Color(0xFF1E3A8A), width: 1.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                      color: const Color(0xFFF0F4FF),
+                                    ),
+                                    child: Text(
+                                      '${item.quantity}',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1E3A8A),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                                 IconButton(
                                   icon: const Icon(Icons.add_circle_outline, color: Colors.green),
                                   onPressed: () {
@@ -680,29 +820,48 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 8),
+                                          // Editable quantity field + buttons (desktop panel)
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               IconButton(
-                                                icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                                icon: const Icon(Icons.edit_note, size: 18, color: Colors.blue),
                                                 padding: EdgeInsets.zero,
                                                 constraints: const BoxConstraints(),
-                                                onPressed: () => _editPrice(index),
-                                                tooltip: 'Negotiate Price',
+                                                onPressed: () => _showEditItemDialog(index),
+                                                tooltip: 'Edit Qty & Price',
                                               ),
-                                              const SizedBox(width: 8),
+                                              const SizedBox(width: 6),
                                               IconButton(
-                                                icon: const Icon(Icons.remove, size: 18),
+                                                icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.redAccent),
                                                 padding: EdgeInsets.zero,
                                                 constraints: const BoxConstraints(),
                                                 onPressed: () => _updateQuantity(index, item.quantity - 1),
                                               ),
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6),
-                                                child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                              // Inline tappable quantity
+                                              GestureDetector(
+                                                onTap: () => _showEditItemDialog(index),
+                                                child: Container(
+                                                  constraints: const BoxConstraints(minWidth: 36),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(color: const Color(0xFF1E3A8A), width: 1.2),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    color: const Color(0xFFF0F4FF),
+                                                  ),
+                                                  child: Text(
+                                                    '${item.quantity}',
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFF1E3A8A),
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                               IconButton(
-                                                icon: const Icon(Icons.add, size: 18),
+                                                icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.green),
                                                 padding: EdgeInsets.zero,
                                                 constraints: const BoxConstraints(),
                                                 onPressed: () => _updateQuantity(index, item.quantity + 1),
