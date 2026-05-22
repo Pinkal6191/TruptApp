@@ -4,6 +4,7 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../inventory/repository/inventory_repository.dart';
 import '../../../core/models/inventory_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class DistributorInventoryScreen extends StatefulWidget {
   const DistributorInventoryScreen({super.key});
@@ -14,6 +15,12 @@ class DistributorInventoryScreen extends StatefulWidget {
 
 class _DistributorInventoryScreenState extends State<DistributorInventoryScreen> {
   final InventoryRepository _repository = InventoryRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('distributor_inventory');
+  }
 
   @override
   Widget build(BuildContext context) {

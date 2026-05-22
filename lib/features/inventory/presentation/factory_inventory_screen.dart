@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/route_tracker.dart';
 import '../repository/production_repository.dart';
 
 class FactoryInventoryScreen extends StatefulWidget {
@@ -10,6 +11,12 @@ class FactoryInventoryScreen extends StatefulWidget {
 
 class _FactoryInventoryScreenState extends State<FactoryInventoryScreen> {
   final ProductionRepository _productionRepository = ProductionRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('factory_inventory');
+  }
 
   void _showAdjustStockModal(String productId, String productName, int currentStock) {
     final amountController = TextEditingController();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/expense_model.dart';
+import '../../../core/utils/route_tracker.dart';
 import '../bloc/expense_bloc.dart';
 import '../bloc/expense_event.dart';
 import '../bloc/expense_state.dart';
@@ -17,6 +18,7 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('expense_management');
     context.read<ExpenseBloc>().add(LoadExpenses());
   }
 

@@ -21,8 +21,10 @@ class AddCustomer extends CustomerEvent {
 class UpdateCustomerMetrics extends CustomerEvent {
   final String customerId;
   final double orderAmount;
-  const UpdateCustomerMetrics(this.customerId, this.orderAmount);
+  final int ordersDelta;
+  const UpdateCustomerMetrics(this.customerId, this.orderAmount, {this.ordersDelta = 1});
 
   @override
-  List<Object> get props => [customerId, orderAmount];
+  List<Object> get props => [customerId, orderAmount, ordersDelta];
 }
+

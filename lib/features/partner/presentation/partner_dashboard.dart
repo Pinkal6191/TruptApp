@@ -11,6 +11,8 @@ import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../orders/bloc/order_state.dart';
 import '../../products/presentation/custom_price_screen.dart';
+import '../../../core/utils/route_tracker.dart';
+import '../../../core/utils/route_restorer.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/crate_sales_breakdown.dart';
@@ -33,6 +35,9 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
         userName: authState.user.name,
       ));
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      restoreSavedRoute(context);
+    });
   }
 
   @override
@@ -113,7 +118,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   subtitle: 'Place a new product order',
                   icon: Icons.add_shopping_cart,
                   color: const Color(0xFF1E3A8A),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(
@@ -121,7 +126,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   subtitle: 'Set your permanent selling prices',
                   icon: Icons.currency_rupee,
                   color: Colors.orange,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomPriceScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomPriceScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(
@@ -129,7 +134,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   subtitle: 'Track your previous orders',
                   icon: Icons.history,
                   color: const Color(0xFF64748B),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
               ],
             ),

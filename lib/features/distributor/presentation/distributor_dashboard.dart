@@ -13,6 +13,8 @@ import '../../products/bloc/product_event.dart';
 import '../../inventory/bloc/inventory_bloc.dart';
 import '../../products/presentation/custom_price_screen.dart';
 import 'distributor_inventory_screen.dart';
+import '../../../core/utils/route_tracker.dart';
+import '../../../core/utils/route_restorer.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/crate_sales_breakdown.dart';
 
@@ -32,6 +34,9 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
       context.read<OrderBloc>().add(WatchOrders(userId: authState.user.uid));
       context.read<InventoryBloc>().add(WatchInventory(authState.user.uid));
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      restoreSavedRoute(context);
+    });
   }
 
   @override
@@ -126,7 +131,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                   subtitle: 'Register a sale to a Retailer',
                   icon: Icons.add_shopping_cart,
                   color: const Color(0xFF1E3A8A),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(
@@ -134,7 +139,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                   subtitle: 'Manage your local crate storage',
                   icon: Icons.inventory_2,
                   color: const Color(0xFF10B981),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DistributorInventoryScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DistributorInventoryScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(
@@ -142,7 +147,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                   subtitle: 'Set your permanent selling prices',
                   icon: Icons.currency_rupee,
                   color: Colors.orange,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomPriceScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomPriceScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(
@@ -150,7 +155,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                   subtitle: 'View your previous transactions',
                   icon: Icons.history,
                   color: const Color(0xFF64748B),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
               ],
             ),

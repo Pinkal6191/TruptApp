@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/utils/file_downloader.dart';
+import '../../../core/utils/route_tracker.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../orders/bloc/order_state.dart';
@@ -27,6 +28,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('admin_reports');
     context.read<OrderBloc>().add(LoadAllOrders());
   }
 

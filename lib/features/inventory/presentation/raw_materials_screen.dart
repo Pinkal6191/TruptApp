@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/raw_material_model.dart';
+import '../../../core/utils/route_tracker.dart';
 import '../repository/production_repository.dart';
 
 class RawMaterialsScreen extends StatefulWidget {
@@ -11,6 +12,12 @@ class RawMaterialsScreen extends StatefulWidget {
 
 class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
   final ProductionRepository _productionRepository = ProductionRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('raw_materials');
+  }
 
   void _showMaterialModal({RawMaterialModel? material}) {
     final isEditing = material != null;

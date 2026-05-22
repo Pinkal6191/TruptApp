@@ -8,6 +8,8 @@ import '../../auth/bloc/auth_state.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
+import '../../../core/utils/route_tracker.dart';
+import '../../../core/utils/route_restorer.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../orders/presentation/order_history_screen.dart';
@@ -29,8 +31,11 @@ import '../../../core/services/database_maintenance_service.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/regular_customers_graph.dart';
 import '../../../core/widgets/crate_sales_breakdown.dart';
-import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_state.dart';
+import '../../../core/models/customer_model.dart';
+import '../../../core/models/order_model.dart';
+import '../../customers/bloc/customer_bloc.dart';
+import '../../customers/bloc/customer_event.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -46,6 +51,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     context.read<ProductBloc>().add(LoadProducts());
     context.read<ExpenseBloc>().add(LoadExpenses());
     context.read<OrderBloc>().add(WatchOrders());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      restoreSavedRoute(context);
+    });
   }
 
   @override
@@ -58,6 +66,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         foregroundColor: const Color(0xFF1E3A8A),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sync Customer List',
+            onPressed: () => _showSyncCustomersDialog(context),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -104,7 +117,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: InkWell(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())),
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())).then((_) => RouteTracker.clearRoute()),
                             child: Row(
                               children: [
                                 const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
@@ -171,7 +184,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const UserManagementScreen()),
-                              );
+                              ).then((_) => RouteTracker.clearRoute());
                             },
                             child: const Text('Review'),
                           ),
@@ -280,7 +293,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Send stock to distributors',
                         Icons.add_shopping_cart,
                         Colors.green,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -291,7 +304,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Direct sale with partner referral',
                         Icons.person_add_alt_1,
                         Colors.purple,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen(isRetailOrder: true))),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateOrderScreen(isRetailOrder: true))).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -302,7 +315,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'View and manage orders',
                         Icons.receipt_long,
                         Colors.blue,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                   ],
@@ -317,7 +330,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Manage catalog & prices',
                         Icons.inventory,
                         Colors.orange,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductManagementScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductManagementScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -328,7 +341,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Sales & commissions',
                         Icons.analytics,
                         Colors.indigo,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportsScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportsScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                   ],
@@ -343,7 +356,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Log daily batch runs',
                         Icons.precision_manufacturing,
                         Colors.blue,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductionLogsScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductionLogsScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -354,7 +367,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Manage raw materials',
                         Icons.science,
                         Colors.teal,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RawMaterialsScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -365,7 +378,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'Warehouse stock counts',
                         Icons.warehouse,
                         Colors.deepOrange,
-                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FactoryInventoryScreen())),
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FactoryInventoryScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                   ],
@@ -418,7 +431,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.money_off, color: Colors.white)),
                         title: const Text('Total Expenses Logged'),
                         trailing: Text('₹${totalExpense.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.red)),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseManagementScreen())),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseManagementScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     );
                   },
@@ -432,7 +445,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     title: const Text('Customer Directory'),
                     subtitle: const Text('View repeat customers and export list'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerListScreen())),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerListScreen())).then((_) => RouteTracker.clearRoute()),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -443,7 +456,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     title: const Text('User Management'),
                     subtitle: const Text('Manage roles, approvals, and accounts'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserManagementScreen())).then((_) => RouteTracker.clearRoute()),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -654,5 +667,182 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ],
       ),
     );
+  }
+
+  void _showSyncCustomersDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sync Customer List'),
+        content: const Text(
+          'This will analyze all historical orders, reconstruct the customer directory, '
+          'and recalculate total orders and spending metrics per customer. '
+          'No existing orders will be modified or deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _runCustomerMigration();
+            },
+            child: const Text('Sync Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runCustomerMigration() async {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Starting Customer Directory Sync...')),
+    );
+
+    try {
+      final ordersSnapshot = await FirebaseFirestore.instance.collection('orders').get();
+      final customersSnapshot = await FirebaseFirestore.instance.collection('customers').get();
+
+      final List<CustomerModel> existingCustomers = customersSnapshot.docs.map((doc) {
+        return CustomerModel.fromMap(doc.data(), doc.id);
+      }).toList();
+
+      final retailOrders = ordersSnapshot.docs
+          .map((doc) => OrderModel.fromFirestore(doc))
+          .where((order) => !order.isSupplyOrder)
+          .toList();
+
+      final List<CustomerModel> processedCustomers = [];
+
+      bool matches(CustomerModel c, OrderModel order) {
+        final sameName = c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim();
+        final sameMobile = c.mobileNumber.trim() == order.customerMobile.trim();
+        final sameAddress = c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
+        
+        if (order.customerMobile.trim().isNotEmpty) {
+          return sameName && sameMobile;
+        }
+        if (order.customerAddress.trim().isNotEmpty) {
+          return sameName && sameAddress;
+        }
+        return sameName;
+      }
+
+      for (var order in retailOrders) {
+        int processedIndex = processedCustomers.indexWhere((c) => matches(c, order));
+
+        if (processedIndex != -1) {
+          final current = processedCustomers[processedIndex];
+          
+          String address = current.address.trim().isEmpty ? order.customerAddress.trim() : current.address;
+          String gst = current.gstNumber.trim().isEmpty ? order.customerGstNumber.trim() : current.gstNumber;
+          String partner = current.partnerId.trim().isEmpty ? 
+              (order.referredPartnerId.isNotEmpty ? order.referredPartnerId : order.createdBy) : current.partnerId;
+
+          processedCustomers[processedIndex] = CustomerModel(
+            id: current.id,
+            shopName: current.shopName,
+            mobileNumber: current.mobileNumber,
+            address: address,
+            gstNumber: gst,
+            partnerId: partner,
+            totalOrders: current.totalOrders + 1,
+            totalAmountSpent: current.totalAmountSpent + order.finalAmount,
+            createdAt: current.createdAt.isBefore(order.createdAt) ? current.createdAt : order.createdAt,
+          );
+        } else {
+          int existingIndex = existingCustomers.indexWhere((c) => matches(c, order));
+
+          if (existingIndex != -1) {
+            final ext = existingCustomers[existingIndex];
+            
+            String address = ext.address.trim().isEmpty ? order.customerAddress.trim() : ext.address;
+            String gst = ext.gstNumber.trim().isEmpty ? order.customerGstNumber.trim() : ext.gstNumber;
+            String partner = ext.partnerId.trim().isEmpty ? 
+                (order.referredPartnerId.isNotEmpty ? order.referredPartnerId : order.createdBy) : ext.partnerId;
+
+            processedCustomers.add(CustomerModel(
+              id: ext.id,
+              shopName: ext.shopName,
+              mobileNumber: ext.mobileNumber,
+              address: address,
+              gstNumber: gst,
+              partnerId: partner,
+              totalOrders: 1,
+              totalAmountSpent: order.finalAmount,
+              createdAt: ext.createdAt.isBefore(order.createdAt) ? ext.createdAt : order.createdAt,
+            ));
+          } else {
+            final newId = FirebaseFirestore.instance.collection('customers').doc().id;
+            final partner = order.referredPartnerId.isNotEmpty 
+                ? order.referredPartnerId 
+                : (order.createdBy.isNotEmpty ? order.createdBy : 'admin');
+
+            processedCustomers.add(CustomerModel(
+              id: newId,
+              shopName: order.shopName.trim(),
+              mobileNumber: order.customerMobile.trim(),
+              address: order.customerAddress.trim(),
+              gstNumber: order.customerGstNumber.trim(),
+              partnerId: partner,
+              totalOrders: 1,
+              totalAmountSpent: order.finalAmount,
+              createdAt: order.createdAt,
+            ));
+          }
+        }
+      }
+
+      for (var ext in existingCustomers) {
+        bool alreadyIncluded = processedCustomers.any((c) => c.id == ext.id);
+        if (!alreadyIncluded) {
+          processedCustomers.add(ext);
+        }
+      }
+
+      final firestore = FirebaseFirestore.instance;
+      int chunkCount = 0;
+      WriteBatch batch = firestore.batch();
+
+      for (var customer in processedCustomers) {
+        final docRef = firestore.collection('customers').doc(customer.id);
+        batch.set(docRef, customer.toMap());
+        chunkCount++;
+
+        if (chunkCount >= 200) {
+          await batch.commit();
+          batch = firestore.batch();
+          chunkCount = 0;
+        }
+      }
+      
+      if (chunkCount > 0) {
+        await batch.commit();
+      }
+
+      if (mounted) {
+        context.read<CustomerBloc>().add(LoadCustomers());
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync complete! Found ${processedCustomers.length} unique customers.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

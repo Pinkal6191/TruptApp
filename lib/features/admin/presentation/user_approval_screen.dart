@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class UserApprovalScreen extends StatefulWidget {
   const UserApprovalScreen({super.key});
@@ -11,6 +12,12 @@ class UserApprovalScreen extends StatefulWidget {
 
 class _UserApprovalScreenState extends State<UserApprovalScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('user_approval');
+  }
 
   Future<void> _approveUser(String uid) async {
     try {

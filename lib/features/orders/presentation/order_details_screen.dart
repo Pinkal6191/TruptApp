@@ -9,6 +9,8 @@ import '../bloc/order_event.dart';
 import '../bloc/order_state.dart';
 import '../../invoices/services/invoice_service.dart';
 import 'create_order_screen.dart';
+import '../../../core/utils/route_tracker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final OrderModel order;
@@ -25,6 +27,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   void initState() {
     super.initState();
     _currentOrder = widget.order;
+    RouteTracker.saveRoute('order_details', data: {'orderId': _currentOrder.id});
   }
 
   void _updateDeliveryStatus(String newStatus) {
@@ -309,6 +312,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             setState(() {
               _currentOrder = updated;
             });
+            RouteTracker.saveRoute('order_details', data: {'orderId': updated.id});
           } catch (_) {}
         }
       },
@@ -615,8 +619,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                             existingOrder: _currentOrder,
                           ),
                         ),
-                      ).then((value) {
-                        Navigator.pop(context);
+                      ).then((_) {
+                        RouteTracker.saveRoute('order_details', data: {'orderId': _currentOrder.id});
                       });
                     },
                   ),
@@ -786,5 +790,63 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         ),
       ),
     );
+  }
+}
+
+class OrderDetailsRestoreLoader extends StatefulWidget {
+  final String orderId;
+  const OrderDetailsRestoreLoader({super.key, required this.orderId});
+
+  @override
+  State<OrderDetailsRestoreLoader> createState() => _OrderDetailsRestoreLoaderState();
+}
+
+class _OrderDetailsRestoreLoaderState extends State<OrderDetailsRestoreLoader> {
+  OrderModel? _order;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrder();
+  }
+
+  Future<void> _loadOrder() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('orders').doc(widget.orderId).get();
+      if (doc.exists) {
+        setState(() {
+          _order = OrderModel.fromFirestore(doc);
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'Order not found';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null || _order == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(child: Text(_error ?? 'Failed to load order')),
+      );
+    }
+    return OrderDetailsScreen(order: _order!);
   }
 }

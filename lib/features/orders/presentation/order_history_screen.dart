@@ -8,6 +8,7 @@ import '../bloc/order_event.dart';
 import '../bloc/order_state.dart';
 import 'order_details_screen.dart';
 import '../../../core/models/order_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -17,9 +18,13 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('order_history');
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
       if (authState.user.role == 'admin') {
@@ -31,6 +36,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         ));
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Color _getStatusColor(String status) {
@@ -141,11 +152,72 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               );
             }
 
+            final query = _searchQuery.toLowerCase().trim();
+            final filteredOrders = sortedOrders.where((order) {
+              if (query.isEmpty) return true;
+              final matchShop = order.shopName.toLowerCase().contains(query);
+              final matchPartner = order.partnerName.toLowerCase().contains(query);
+              final matchRef = order.orderReference.toLowerCase().contains(query);
+              final matchInvoice = order.invoiceNumber.toLowerCase().contains(query);
+              final matchProducts = order.items.any((item) => item.productName.toLowerCase().contains(query));
+              return matchShop || matchPartner || matchRef || matchInvoice || matchProducts;
+            }).toList();
+
             final authState = context.read<AuthBloc>().state;
-            if (authState is Authenticated && authState.user.role == 'admin') {
-              return _buildAdminView(sortedOrders);
-            }
-            return _buildStandardView(sortedOrders);
+            final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search by customer, partner, ref, invoice, or product...',
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.grey),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: filteredOrders.isEmpty
+                      ? const Center(child: Text('No matching orders found.'))
+                      : (isAdmin
+                          ? _buildAdminView(filteredOrders)
+                          : _buildStandardView(filteredOrders)),
+                ),
+              ],
+            );
           } else if (state is OrderError) {
              return Center(child: Text('Error: ${state.message}', style: const TextStyle(color: Colors.red)));
           }
@@ -163,7 +235,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         final order = orders[index];
         return InkWell(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)));
+            Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
+                .then((_) => RouteTracker.saveRoute('order_history'));
           },
           child: Card(
             elevation: 2,
@@ -487,7 +560,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   final isOverpaid = pending < 0;
 
                   return InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order))),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
+                          .then((_) => RouteTracker.saveRoute('order_history'));
+                    },
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       padding: const EdgeInsets.all(12),

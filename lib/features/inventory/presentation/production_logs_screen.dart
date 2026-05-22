@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/models/product_model.dart';
 import '../../../core/models/raw_material_model.dart';
 import '../../../core/models/production_log_model.dart';
+import '../../../core/utils/route_tracker.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../products/bloc/product_state.dart';
@@ -81,6 +82,7 @@ class _ProductionLogsScreenState extends State<ProductionLogsScreen> with Single
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('production_logs');
     _tabController = TabController(length: 2, vsync: this);
     context.read<ProductBloc>().add(LoadProducts());
 

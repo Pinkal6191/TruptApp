@@ -95,7 +95,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order updated successfully!'));
-      if (event.order.creatorRole == 'admin') {
+      if (event.userId == null) {
         add(LoadOrders());
       } else {
         add(LoadOrders(

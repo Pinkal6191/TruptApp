@@ -25,7 +25,7 @@ class CustomerRepository {
     return snapshot.docs.map((doc) => CustomerModel.fromMap(doc.data(), doc.id)).toList();
   }
 
-  Future<void> updateCustomerMetrics(String customerId, double newOrderAmount) async {
+  Future<void> updateCustomerMetrics(String customerId, double newOrderAmount, {int ordersDelta = 1}) async {
     final docRef = _firestore.collection('customers').doc(customerId);
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
@@ -34,7 +34,7 @@ class CustomerRepository {
         final currentAmount = (snapshot.data()?['totalAmountSpent'] ?? 0).toDouble();
         
         transaction.update(docRef, {
-          'totalOrders': currentOrders + 1,
+          'totalOrders': currentOrders + ordersDelta,
           'totalAmountSpent': currentAmount + newOrderAmount,
         });
       }

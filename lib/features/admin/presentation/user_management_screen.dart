@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -15,6 +16,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _filterRole = 'All';
   bool _showOnlyPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('user_management');
+  }
 
   Future<void> _deleteUser(String uid) async {
     final confirm = await showDialog<bool>(

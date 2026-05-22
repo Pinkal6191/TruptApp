@@ -7,6 +7,7 @@ import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_state.dart';
 import '../../admin/repository/user_repository.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class CustomPriceScreen extends StatefulWidget {
   const CustomPriceScreen({super.key});
@@ -23,6 +24,7 @@ class _CustomPriceScreenState extends State<CustomPriceScreen> {
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('custom_price');
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
       _localCustomPrices = Map.from(authState.user.customPrices);

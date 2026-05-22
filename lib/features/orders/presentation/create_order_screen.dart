@@ -18,6 +18,7 @@ import '../../customers/bloc/customer_event.dart';
 import '../../customers/bloc/customer_state.dart';
 import '../../../core/models/customer_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/utils/route_tracker.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   final bool isRetailOrder;
@@ -50,6 +51,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   void initState() {
     super.initState();
+    RouteTracker.saveRoute('create_order', data: {
+      'isRetailOrder': widget.isRetailOrder,
+      'existingOrderId': widget.existingOrder?.id,
+    });
     context.read<ProductBloc>().add(LoadProducts());
     context.read<CustomerBloc>().add(LoadCustomers());
     _loadDistributors();
@@ -356,11 +361,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       paidAmount: currentPaidAmount,
       paymentStatus: finalPaymentStatus,
       additionalNote: _additionalNoteController.text.trim(),
-      referredPartnerId: widget.existingOrder?.referredPartnerId ?? finalReferredPartnerId,
+      referredPartnerId: finalReferredPartnerId,
     );
 
     if (widget.existingOrder != null) {
-      context.read<OrderBloc>().add(UpdateOrder(order: order, userId: uid));
+      context.read<OrderBloc>().add(UpdateOrder(order: order, userId: userRole == 'admin' ? null : uid));
     } else {
       context.read<OrderBloc>().add(CreateOrder(order: order));
     }
@@ -370,34 +375,185 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       final customerBloc = context.read<CustomerBloc>();
       final state = customerBloc.state;
       if (state is CustomersLoaded) {
-        CustomerModel? existingCustomer;
-        try {
-          existingCustomer = state.customers.firstWhere((c) => c.shopName.toLowerCase() == order.shopName.toLowerCase());
-        } catch (e) {
-          existingCustomer = null;
-        }
+        if (widget.existingOrder != null) {
+          // Editing existing order
+          final oldOrder = widget.existingOrder!;
+          
+          // Check if customer is the same
+          final sameName = oldOrder.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim();
+          final sameMobile = oldOrder.customerMobile.trim() == order.customerMobile.trim();
+          final sameAddress = oldOrder.customerAddress.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
+          
+          bool isSameCustomer = false;
+          if (order.customerMobile.trim().isNotEmpty) {
+            isSameCustomer = sameName && sameMobile;
+          } else if (order.customerAddress.trim().isNotEmpty) {
+            isSameCustomer = sameName && sameAddress;
+          } else {
+            isSameCustomer = sameName;
+          }
 
-        if (existingCustomer != null) {
-          customerBloc.add(UpdateCustomerMetrics(existingCustomer.id, order.finalAmount));
+          if (isSameCustomer) {
+            // Find existing customer to update
+            CustomerModel? existingCustomer;
+            try {
+              existingCustomer = state.customers.firstWhere((c) {
+                final cSameName = c.shopName.toLowerCase() == order.shopName.toLowerCase();
+                final cSameMobile = c.mobileNumber.trim() == order.customerMobile.trim();
+                final cSameAddress = c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
+                
+                if (order.customerMobile.trim().isNotEmpty) {
+                  return cSameName && cSameMobile;
+                }
+                if (order.customerAddress.trim().isNotEmpty) {
+                  return cSameName && cSameAddress;
+                }
+                return cSameName;
+              });
+            } catch (e) {
+              existingCustomer = null;
+            }
+
+            if (existingCustomer != null) {
+              customerBloc.add(UpdateCustomerMetrics(
+                existingCustomer.id,
+                order.finalAmount - oldOrder.finalAmount,
+                ordersDelta: 0,
+              ));
+            } else {
+              // Fallback: create if not found
+              final newCustomer = CustomerModel(
+                id: FirebaseFirestore.instance.collection('customers').doc().id,
+                shopName: order.shopName,
+                mobileNumber: order.customerMobile,
+                address: order.customerAddress,
+                gstNumber: order.customerGstNumber,
+                partnerId: uid,
+                totalOrders: 1,
+                totalAmountSpent: order.finalAmount,
+                createdAt: DateTime.now(),
+              );
+              customerBloc.add(AddCustomer(newCustomer));
+            }
+          } else {
+            // Customer changed!
+            // 1. Decrement old customer
+            CustomerModel? oldCustomer;
+            try {
+              oldCustomer = state.customers.firstWhere((c) {
+                final cSameName = c.shopName.toLowerCase() == oldOrder.shopName.toLowerCase();
+                final cSameMobile = c.mobileNumber.trim() == oldOrder.customerMobile.trim();
+                final cSameAddress = c.address.toLowerCase().trim() == oldOrder.customerAddress.toLowerCase().trim();
+                
+                if (oldOrder.customerMobile.trim().isNotEmpty) {
+                  return cSameName && cSameMobile;
+                }
+                if (oldOrder.customerAddress.trim().isNotEmpty) {
+                  return cSameName && cSameAddress;
+                }
+                return cSameName;
+              });
+            } catch (e) {
+              oldCustomer = null;
+            }
+
+            if (oldCustomer != null) {
+              customerBloc.add(UpdateCustomerMetrics(
+                oldCustomer.id,
+                -oldOrder.finalAmount,
+                ordersDelta: -1,
+              ));
+            }
+
+            // 2. Increment new customer
+            CustomerModel? existingCustomer;
+            try {
+              existingCustomer = state.customers.firstWhere((c) {
+                final cSameName = c.shopName.toLowerCase() == order.shopName.toLowerCase();
+                final cSameMobile = c.mobileNumber.trim() == order.customerMobile.trim();
+                final cSameAddress = c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
+                
+                if (order.customerMobile.trim().isNotEmpty) {
+                  return cSameName && cSameMobile;
+                }
+                if (order.customerAddress.trim().isNotEmpty) {
+                  return cSameName && cSameAddress;
+                }
+                return cSameName;
+              });
+            } catch (e) {
+              existingCustomer = null;
+            }
+
+            if (existingCustomer != null) {
+              customerBloc.add(UpdateCustomerMetrics(
+                existingCustomer.id,
+                order.finalAmount,
+                ordersDelta: 1,
+              ));
+            } else {
+              final newCustomer = CustomerModel(
+                id: FirebaseFirestore.instance.collection('customers').doc().id,
+                shopName: order.shopName,
+                mobileNumber: order.customerMobile,
+                address: order.customerAddress,
+                gstNumber: order.customerGstNumber,
+                partnerId: uid,
+                totalOrders: 1,
+                totalAmountSpent: order.finalAmount,
+                createdAt: DateTime.now(),
+              );
+              customerBloc.add(AddCustomer(newCustomer));
+            }
+          }
         } else {
-          final newCustomer = CustomerModel(
-            id: FirebaseFirestore.instance.collection('customers').doc().id,
-            shopName: order.shopName,
-            mobileNumber: order.customerMobile,
-            address: order.customerAddress,
-            gstNumber: order.customerGstNumber,
-            partnerId: uid,
-            totalOrders: 1,
-            totalAmountSpent: order.finalAmount,
-            createdAt: DateTime.now(),
-          );
-          customerBloc.add(AddCustomer(newCustomer));
+          // Brand new order
+          CustomerModel? existingCustomer;
+          try {
+            existingCustomer = state.customers.firstWhere((c) {
+              final cSameName = c.shopName.toLowerCase() == order.shopName.toLowerCase();
+              final cSameMobile = c.mobileNumber.trim() == order.customerMobile.trim();
+              final cSameAddress = c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
+              
+              if (order.customerMobile.trim().isNotEmpty) {
+                return cSameName && cSameMobile;
+              }
+              if (order.customerAddress.trim().isNotEmpty) {
+                return cSameName && cSameAddress;
+              }
+              return cSameName;
+            });
+          } catch (e) {
+            existingCustomer = null;
+          }
+
+          if (existingCustomer != null) {
+            customerBloc.add(UpdateCustomerMetrics(
+              existingCustomer.id,
+              order.finalAmount,
+              ordersDelta: 1,
+            ));
+          } else {
+            final newCustomer = CustomerModel(
+              id: FirebaseFirestore.instance.collection('customers').doc().id,
+              shopName: order.shopName,
+              mobileNumber: order.customerMobile,
+              address: order.customerAddress,
+              gstNumber: order.customerGstNumber,
+              partnerId: uid,
+              totalOrders: 1,
+              totalAmountSpent: order.finalAmount,
+              createdAt: DateTime.now(),
+            );
+            customerBloc.add(AddCustomer(newCustomer));
+          }
         }
       }
     }
 
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(widget.existingOrder != null ? 'Order updated successfully!' : 'Order created successfully!'),
         backgroundColor: Colors.green,
@@ -859,6 +1015,52 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             _addressController.text = selection.address;
             _gstController.text = selection.gstNumber;
           },
+          optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<CustomerModel> onSelected, Iterable<CustomerModel> options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4.0,
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                child: SizedBox(
+                  width: 320,
+                  child: ListView.separated(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (BuildContext context, int index) {
+                      final CustomerModel option = options.elementAt(index);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        title: Text(
+                          option.shopName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A), fontSize: 14),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (option.mobileNumber.isNotEmpty)
+                              Text('📞 ${option.mobileNumber}', style: const TextStyle(fontSize: 12, color: Colors.black87))
+                            else
+                              const Text('📞 No mobile', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            if (option.address.isNotEmpty)
+                              Text('📍 ${option.address}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.black54))
+                            else
+                              const Text('📍 No address', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                        onTap: () {
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
             _shopNameController = controller;
             return TextField(
@@ -1096,3 +1298,70 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 }
+
+class CreateOrderRestoreLoader extends StatefulWidget {
+  final bool isRetailOrder;
+  final String? existingOrderId;
+  const CreateOrderRestoreLoader({super.key, this.isRetailOrder = false, this.existingOrderId});
+
+  @override
+  State<CreateOrderRestoreLoader> createState() => _CreateOrderRestoreLoaderState();
+}
+
+class _CreateOrderRestoreLoaderState extends State<CreateOrderRestoreLoader> {
+  OrderModel? _order;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingOrderId != null) {
+      _loadOrder();
+    } else {
+      _loading = false;
+    }
+  }
+
+  Future<void> _loadOrder() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('orders').doc(widget.existingOrderId).get();
+      if (doc.exists) {
+        setState(() {
+          _order = OrderModel.fromFirestore(doc);
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'Order not found';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(child: Text(_error ?? 'Failed to load order')),
+      );
+    }
+    return CreateOrderScreen(
+      isRetailOrder: widget.isRetailOrder,
+      existingOrder: _order,
+    );
+  }
+}
+

@@ -36,7 +36,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
 
   Future<void> _onUpdateCustomerMetrics(UpdateCustomerMetrics event, Emitter<CustomerState> emit) async {
     try {
-      await _repository.updateCustomerMetrics(event.customerId, event.orderAmount);
+      await _repository.updateCustomerMetrics(event.customerId, event.orderAmount, ordersDelta: event.ordersDelta);
       // Reload customers after updating
       add(LoadCustomers());
     } catch (e) {

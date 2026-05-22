@@ -6,9 +6,21 @@ import '../../products/bloc/product_state.dart';
 import '../../../core/models/product_model.dart';
 import '../../inventory/repository/production_repository.dart';
 import '../../../core/models/raw_material_model.dart';
+import '../../../core/utils/route_tracker.dart';
 
-class ProductManagementScreen extends StatelessWidget {
+class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
+
+  @override
+  State<ProductManagementScreen> createState() => _ProductManagementScreenState();
+}
+
+class _ProductManagementScreenState extends State<ProductManagementScreen> {
+  @override
+  void initState() {
+    super.initState();
+    RouteTracker.saveRoute('product_management');
+  }
 
   void _showProductForm(BuildContext context, {ProductModel? product}) {
     final nameController = TextEditingController(text: product?.name);
