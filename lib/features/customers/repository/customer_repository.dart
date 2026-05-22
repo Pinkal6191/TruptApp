@@ -5,18 +5,40 @@ class CustomerRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> saveCustomer(CustomerModel customer) async {
-    final query = await _firestore
-        .collection('customers')
-        .where('mobileNumber', isEqualTo: customer.mobileNumber)
-        .limit(1)
-        .get();
-        
-    if (query.docs.isNotEmpty) {
-      final existingDoc = query.docs.first;
+    final String shopName = customer.shopName.trim();
+    if (shopName.isEmpty) return;
+
+    final customersRef = _firestore.collection('customers');
+    final querySnapshot = await customersRef.get();
+    
+    CustomerModel? matchedCustomer;
+    for (var doc in querySnapshot.docs) {
+      final c = CustomerModel.fromMap(doc.data(), doc.id);
+      
+      int matchCount = 0;
+      if (c.shopName.toLowerCase().trim() == shopName.toLowerCase()) {
+        matchCount++;
+      }
+      if (c.mobileNumber.trim().isNotEmpty && customer.mobileNumber.trim().isNotEmpty &&
+          c.mobileNumber.trim() == customer.mobileNumber.trim()) {
+        matchCount++;
+      }
+      if (c.address.toLowerCase().trim().isNotEmpty && customer.address.toLowerCase().trim().isNotEmpty &&
+          c.address.toLowerCase().trim() == customer.address.toLowerCase().trim()) {
+        matchCount++;
+      }
+      
+      if (matchCount >= 2) {
+        matchedCustomer = c;
+        break;
+      }
+    }
+
+    if (matchedCustomer != null) {
       // Merge/update existing customer info
-      await existingDoc.reference.update(customer.toMap());
+      await customersRef.doc(matchedCustomer.id).update(customer.toMap());
     } else {
-      await _firestore.collection('customers').doc(customer.id).set(customer.toMap());
+      await customersRef.doc(customer.id).set(customer.toMap());
     }
   }
 

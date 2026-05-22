@@ -719,17 +719,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
       final List<CustomerModel> processedCustomers = [];
 
       bool matches(CustomerModel c, OrderModel order) {
-        final sameName = c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim();
-        final sameMobile = c.mobileNumber.trim() == order.customerMobile.trim();
-        final sameAddress = c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim();
-        
-        if (order.customerMobile.trim().isNotEmpty) {
-          return sameName && sameMobile;
+        int matchCount = 0;
+        if (c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim() &&
+            c.shopName.trim().isNotEmpty) {
+          matchCount++;
         }
-        if (order.customerAddress.trim().isNotEmpty) {
-          return sameName && sameAddress;
+        if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() == order.customerMobile.trim()) {
+          matchCount++;
         }
-        return sameName;
+        if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
+            c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
+          matchCount++;
+        }
+        return matchCount >= 2;
       }
 
       for (var order in retailOrders) {

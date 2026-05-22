@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_model.dart';
+import '../../../core/models/customer_model.dart';
 import '../../inventory/repository/inventory_repository.dart';
 import '../../inventory/repository/production_repository.dart';
 
@@ -29,6 +30,9 @@ class OrderRepository {
           await _productionRepository.updateFactoryStock(item.productId, item.productName, -item.quantity);
         }
       }
+
+      // Sync Customer automatically!
+      await _updateCustomerOnOrderCreated(order);
     } catch (e) {
       throw Exception('Failed to create order: $e');
     }
@@ -209,6 +213,9 @@ class OrderRepository {
       }
       OrderModel oldOrder = OrderModel.fromFirestore(doc);
 
+      // Sync Customer metrics on update!
+      await _updateCustomerOnOrderUpdated(oldOrder, newOrder);
+
       // 2. Reverse old stock changes
       for (var item in oldOrder.items) {
         if (oldOrder.creatorRole == 'distributor') {
@@ -244,6 +251,9 @@ class OrderRepository {
     try {
       await _firestore.collection(collectionName).doc(order.id).delete();
       
+      // Sync Customer metrics on delete!
+      await _updateCustomerOnOrderDeleted(order);
+
       // Reverse Stock Maintenance
       for (var item in order.items) {
         if (order.creatorRole == 'distributor') {
@@ -261,6 +271,231 @@ class OrderRepository {
       }
     } catch (e) {
       throw Exception('Failed to delete order: $e');
+    }
+  }
+
+  // --- Customer Directory Auto-Sync Helpers ---
+
+  Future<void> _updateCustomerOnOrderCreated(OrderModel order) async {
+    if (order.isSupplyOrder) return;
+    
+    final String shopName = order.shopName.trim();
+    if (shopName.isEmpty) return;
+
+    final customersRef = _firestore.collection('customers');
+    final querySnapshot = await customersRef.get();
+    
+    CustomerModel? matchedCustomer;
+    for (var doc in querySnapshot.docs) {
+      final c = CustomerModel.fromMap(doc.data(), doc.id);
+      
+      int matchCount = 0;
+      if (c.shopName.toLowerCase().trim() == shopName.toLowerCase()) {
+        matchCount++;
+      }
+      if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
+          c.mobileNumber.trim() == order.customerMobile.trim()) {
+        matchCount++;
+      }
+      if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
+          c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
+        matchCount++;
+      }
+      
+      if (matchCount >= 2) {
+        matchedCustomer = c;
+        break;
+      }
+    }
+
+    if (matchedCustomer != null) {
+      final String updatedAddress = matchedCustomer.address.trim().isEmpty ? order.customerAddress.trim() : matchedCustomer.address;
+      final String updatedGst = matchedCustomer.gstNumber.trim().isEmpty ? order.customerGstNumber.trim() : matchedCustomer.gstNumber;
+      final String updatedMobile = matchedCustomer.mobileNumber.trim().isEmpty ? order.customerMobile.trim() : matchedCustomer.mobileNumber;
+      final String updatedPartner = matchedCustomer.partnerId.trim().isEmpty ? 
+          (order.referredPartnerId.isNotEmpty ? order.referredPartnerId : order.createdBy) : matchedCustomer.partnerId;
+
+      await customersRef.doc(matchedCustomer.id).update({
+        'address': updatedAddress,
+        'gstNumber': updatedGst,
+        'mobileNumber': updatedMobile,
+        'partnerId': updatedPartner,
+        'totalOrders': matchedCustomer.totalOrders + 1,
+        'totalAmountSpent': matchedCustomer.totalAmountSpent + order.finalAmount,
+      });
+    } else {
+      final newId = customersRef.doc().id;
+      final String partner = order.referredPartnerId.isNotEmpty 
+          ? order.referredPartnerId 
+          : (order.createdBy.isNotEmpty ? order.createdBy : 'admin');
+          
+      final newCustomer = CustomerModel(
+        id: newId,
+        shopName: shopName,
+        mobileNumber: order.customerMobile.trim(),
+        address: order.customerAddress.trim(),
+        gstNumber: order.customerGstNumber.trim(),
+        partnerId: partner,
+        totalOrders: 1,
+        totalAmountSpent: order.finalAmount,
+        createdAt: order.createdAt,
+      );
+      
+      await customersRef.doc(newId).set(newCustomer.toMap());
+    }
+  }
+
+  Future<void> _updateCustomerOnOrderUpdated(OrderModel oldOrder, OrderModel newOrder) async {
+    if (oldOrder.isSupplyOrder && newOrder.isSupplyOrder) return;
+
+    final customersRef = _firestore.collection('customers');
+    final querySnapshot = await customersRef.get();
+    final List<CustomerModel> allCustomers = querySnapshot.docs
+        .map((doc) => CustomerModel.fromMap(doc.data(), doc.id))
+        .toList();
+        
+    CustomerModel? oldCustomer;
+    if (!oldOrder.isSupplyOrder && oldOrder.shopName.trim().isNotEmpty) {
+      for (var c in allCustomers) {
+        int matchCount = 0;
+        if (c.shopName.toLowerCase().trim() == oldOrder.shopName.toLowerCase().trim()) {
+          matchCount++;
+        }
+        if (c.mobileNumber.trim().isNotEmpty && oldOrder.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() == oldOrder.customerMobile.trim()) {
+          matchCount++;
+        }
+        if (c.address.toLowerCase().trim().isNotEmpty && oldOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
+            c.address.toLowerCase().trim() == oldOrder.customerAddress.toLowerCase().trim()) {
+          matchCount++;
+        }
+        if (matchCount >= 2) {
+          oldCustomer = c;
+          break;
+        }
+      }
+    }
+
+    CustomerModel? newCustomer;
+    if (!newOrder.isSupplyOrder && newOrder.shopName.trim().isNotEmpty) {
+      for (var c in allCustomers) {
+        int matchCount = 0;
+        if (c.shopName.toLowerCase().trim() == newOrder.shopName.toLowerCase().trim()) {
+          matchCount++;
+        }
+        if (c.mobileNumber.trim().isNotEmpty && newOrder.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() == newOrder.customerMobile.trim()) {
+          matchCount++;
+        }
+        if (c.address.toLowerCase().trim().isNotEmpty && newOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
+            c.address.toLowerCase().trim() == newOrder.customerAddress.toLowerCase().trim()) {
+          matchCount++;
+        }
+        if (matchCount >= 2) {
+          newCustomer = c;
+          break;
+        }
+      }
+    }
+
+    if (oldCustomer != null && newCustomer != null && oldCustomer.id == newCustomer.id) {
+      final double amountDelta = newOrder.finalAmount - oldOrder.finalAmount;
+      await customersRef.doc(oldCustomer.id).update({
+        'totalAmountSpent': oldCustomer.totalAmountSpent + amountDelta,
+        if (oldCustomer.address.trim().isEmpty && newOrder.customerAddress.trim().isNotEmpty)
+          'address': newOrder.customerAddress.trim(),
+        if (oldCustomer.gstNumber.trim().isEmpty && newOrder.customerGstNumber.trim().isNotEmpty)
+          'gstNumber': newOrder.customerGstNumber.trim(),
+        if (oldCustomer.mobileNumber.trim().isEmpty && newOrder.customerMobile.trim().isNotEmpty)
+          'mobileNumber': newOrder.customerMobile.trim(),
+      });
+    } else {
+      if (oldCustomer != null) {
+        final int updatedOrders = (oldCustomer.totalOrders - 1).clamp(0, 999999);
+        final double updatedAmount = (oldCustomer.totalAmountSpent - oldOrder.finalAmount).clamp(0.0, double.infinity);
+        await customersRef.doc(oldCustomer.id).update({
+          'totalOrders': updatedOrders,
+          'totalAmountSpent': updatedAmount,
+        });
+      }
+      
+      if (newCustomer != null) {
+        final String updatedAddress = newCustomer.address.trim().isEmpty ? newOrder.customerAddress.trim() : newCustomer.address;
+        final String updatedGst = newCustomer.gstNumber.trim().isEmpty ? newOrder.customerGstNumber.trim() : newCustomer.gstNumber;
+        final String updatedMobile = newCustomer.mobileNumber.trim().isEmpty ? newOrder.customerMobile.trim() : newCustomer.mobileNumber;
+        final String updatedPartner = newCustomer.partnerId.trim().isEmpty ? 
+            (newOrder.referredPartnerId.isNotEmpty ? newOrder.referredPartnerId : newOrder.createdBy) : newCustomer.partnerId;
+
+        await customersRef.doc(newCustomer.id).update({
+          'address': updatedAddress,
+          'gstNumber': updatedGst,
+          'mobileNumber': updatedMobile,
+          'partnerId': updatedPartner,
+          'totalOrders': newCustomer.totalOrders + 1,
+          'totalAmountSpent': newCustomer.totalAmountSpent + newOrder.finalAmount,
+        });
+      } else if (!newOrder.isSupplyOrder && newOrder.shopName.trim().isNotEmpty) {
+        final newId = customersRef.doc().id;
+        final String partner = newOrder.referredPartnerId.isNotEmpty 
+            ? newOrder.referredPartnerId 
+            : (newOrder.createdBy.isNotEmpty ? newOrder.createdBy : 'admin');
+            
+        final brandNewCustomer = CustomerModel(
+          id: newId,
+          shopName: newOrder.shopName.trim(),
+          mobileNumber: newOrder.customerMobile.trim(),
+          address: newOrder.customerAddress.trim(),
+          gstNumber: newOrder.customerGstNumber.trim(),
+          partnerId: partner,
+          totalOrders: 1,
+          totalAmountSpent: newOrder.finalAmount,
+          createdAt: newOrder.createdAt,
+        );
+        await customersRef.doc(newId).set(brandNewCustomer.toMap());
+      }
+    }
+  }
+
+  Future<void> _updateCustomerOnOrderDeleted(OrderModel order) async {
+    if (order.isSupplyOrder) return;
+    
+    final String shopName = order.shopName.trim();
+    if (shopName.isEmpty) return;
+
+    final customersRef = _firestore.collection('customers');
+    final querySnapshot = await customersRef.get();
+    
+    CustomerModel? matchedCustomer;
+    for (var doc in querySnapshot.docs) {
+      final c = CustomerModel.fromMap(doc.data(), doc.id);
+      
+      int matchCount = 0;
+      if (c.shopName.toLowerCase().trim() == shopName.toLowerCase()) {
+        matchCount++;
+      }
+      if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
+          c.mobileNumber.trim() == order.customerMobile.trim()) {
+        matchCount++;
+      }
+      if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
+          c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
+        matchCount++;
+      }
+      
+      if (matchCount >= 2) {
+        matchedCustomer = c;
+        break;
+      }
+    }
+
+    if (matchedCustomer != null) {
+      final int updatedOrders = (matchedCustomer.totalOrders - 1).clamp(0, 999999);
+      final double updatedAmount = (matchedCustomer.totalAmountSpent - order.finalAmount).clamp(0.0, double.infinity);
+      
+      await customersRef.doc(matchedCustomer.id).update({
+        'totalOrders': updatedOrders,
+        'totalAmountSpent': updatedAmount,
+      });
     }
   }
 }
