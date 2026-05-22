@@ -129,7 +129,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               _selectedReferenceType = 'Partner Referral';
               try {
                 _selectedPartnerReference = _partners.firstWhere(
-                  (p) => p.name == widget.existingOrder!.orderReference,
+                  (p) => p.name.toLowerCase().trim() == widget.existingOrder!.orderReference.toLowerCase().trim() ||
+                         p.uid == widget.existingOrder!.orderReference,
                 );
               } catch (_) {}
             }
@@ -1003,7 +1004,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               if (selection.partnerId.isNotEmpty) {
                 try {
                   final matchingPartner = _partners.firstWhere(
-                    (p) => p.uid == selection.partnerId,
+                    (p) => p.uid == selection.partnerId || p.name.toLowerCase().trim() == selection.partnerId.toLowerCase().trim(),
                   );
                   _selectedReferenceType = 'Partner Referral';
                   _selectedPartnerReference = matchingPartner;
@@ -1036,7 +1037,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       String? partnerName;
                       if (option.partnerId.isNotEmpty) {
                         try {
-                          final partner = _partners.firstWhere((p) => p.uid == option.partnerId);
+                          final partner = _partners.firstWhere(
+                            (p) => p.uid == option.partnerId || p.name.toLowerCase().trim() == option.partnerId.toLowerCase().trim(),
+                          );
                           partnerName = partner.name;
                         } catch (_) {}
                       }
