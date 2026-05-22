@@ -10,3 +10,13 @@ class AddExpense extends ExpenseEvent {
 }
 
 class ResetExpenseState extends ExpenseEvent {}
+
+class UpdateExpense extends ExpenseEvent {
+  final ExpenseModel expense;
+  UpdateExpense({required this.expense});
+}
+
+class DeleteExpense extends ExpenseEvent {
+  final String id;
+  DeleteExpense({required this.id});
+}

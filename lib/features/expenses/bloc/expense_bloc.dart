@@ -11,6 +11,8 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
         super(ExpenseInitial()) {
     on<LoadExpenses>(_onLoadExpenses);
     on<AddExpense>(_onAddExpense);
+    on<UpdateExpense>(_onUpdateExpense);
+    on<DeleteExpense>(_onDeleteExpense);
     on<ResetExpenseState>((event, emit) => emit(ExpenseInitial()));
   }
 
@@ -29,6 +31,28 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     try {
       await _expenseRepository.addExpense(event.expense);
       emit(ExpenseOperationSuccess(message: 'Expense added successfully!'));
+      add(LoadExpenses());
+    } catch (e) {
+      emit(ExpenseError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateExpense(UpdateExpense event, Emitter<ExpenseState> emit) async {
+    emit(ExpenseLoading());
+    try {
+      await _expenseRepository.updateExpense(event.expense);
+      emit(ExpenseOperationSuccess(message: 'Expense updated successfully!'));
+      add(LoadExpenses());
+    } catch (e) {
+      emit(ExpenseError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteExpense(DeleteExpense event, Emitter<ExpenseState> emit) async {
+    emit(ExpenseLoading());
+    try {
+      await _expenseRepository.deleteExpense(event.id);
+      emit(ExpenseOperationSuccess(message: 'Expense deleted successfully!'));
       add(LoadExpenses());
     } catch (e) {
       emit(ExpenseError(message: e.toString()));
