@@ -309,11 +309,14 @@ class OrderRepository {
     }
 
     if (matchedCustomer != null) {
-      final String updatedAddress = matchedCustomer.address.trim().isEmpty ? order.customerAddress.trim() : matchedCustomer.address;
-      final String updatedGst = matchedCustomer.gstNumber.trim().isEmpty ? order.customerGstNumber.trim() : matchedCustomer.gstNumber;
-      final String updatedMobile = matchedCustomer.mobileNumber.trim().isEmpty ? order.customerMobile.trim() : matchedCustomer.mobileNumber;
-      final String updatedPartner = matchedCustomer.partnerId.trim().isEmpty ? 
-          (order.referredPartnerId.isNotEmpty ? order.referredPartnerId : order.createdBy) : matchedCustomer.partnerId;
+      // Always use the order's non-empty value so updated details (e.g. new GST) are persisted.
+      final String updatedAddress = order.customerAddress.trim().isNotEmpty ? order.customerAddress.trim() : matchedCustomer.address;
+      final String updatedGst    = order.customerGstNumber.trim().isNotEmpty && order.customerGstNumber.trim() != 'URP'
+          ? order.customerGstNumber.trim() : matchedCustomer.gstNumber;
+      final String updatedMobile = order.customerMobile.trim().isNotEmpty ? order.customerMobile.trim() : matchedCustomer.mobileNumber;
+      final String updatedPartner = matchedCustomer.partnerId.trim().isEmpty 
+          ? (order.referredPartnerId.isNotEmpty ? order.referredPartnerId : order.createdBy) 
+          : matchedCustomer.partnerId;
 
       await customersRef.doc(matchedCustomer.id).update({
         'address': updatedAddress,
@@ -400,14 +403,16 @@ class OrderRepository {
 
     if (oldCustomer != null && newCustomer != null && oldCustomer.id == newCustomer.id) {
       final double amountDelta = newOrder.finalAmount - oldOrder.finalAmount;
+      // Always use the order's non-empty value so updated details are persisted.
+      final String updatedAddress = newOrder.customerAddress.trim().isNotEmpty ? newOrder.customerAddress.trim() : oldCustomer.address;
+      final String updatedGst    = newOrder.customerGstNumber.trim().isNotEmpty && newOrder.customerGstNumber.trim() != 'URP'
+          ? newOrder.customerGstNumber.trim() : oldCustomer.gstNumber;
+      final String updatedMobile = newOrder.customerMobile.trim().isNotEmpty ? newOrder.customerMobile.trim() : oldCustomer.mobileNumber;
       await customersRef.doc(oldCustomer.id).update({
         'totalAmountSpent': oldCustomer.totalAmountSpent + amountDelta,
-        if (oldCustomer.address.trim().isEmpty && newOrder.customerAddress.trim().isNotEmpty)
-          'address': newOrder.customerAddress.trim(),
-        if (oldCustomer.gstNumber.trim().isEmpty && newOrder.customerGstNumber.trim().isNotEmpty)
-          'gstNumber': newOrder.customerGstNumber.trim(),
-        if (oldCustomer.mobileNumber.trim().isEmpty && newOrder.customerMobile.trim().isNotEmpty)
-          'mobileNumber': newOrder.customerMobile.trim(),
+        'address': updatedAddress,
+        'gstNumber': updatedGst,
+        'mobileNumber': updatedMobile,
       });
     } else {
       if (oldCustomer != null) {
@@ -420,11 +425,14 @@ class OrderRepository {
       }
       
       if (newCustomer != null) {
-        final String updatedAddress = newCustomer.address.trim().isEmpty ? newOrder.customerAddress.trim() : newCustomer.address;
-        final String updatedGst = newCustomer.gstNumber.trim().isEmpty ? newOrder.customerGstNumber.trim() : newCustomer.gstNumber;
-        final String updatedMobile = newCustomer.mobileNumber.trim().isEmpty ? newOrder.customerMobile.trim() : newCustomer.mobileNumber;
-        final String updatedPartner = newCustomer.partnerId.trim().isEmpty ? 
-            (newOrder.referredPartnerId.isNotEmpty ? newOrder.referredPartnerId : newOrder.createdBy) : newCustomer.partnerId;
+        // Always use the order's non-empty value so updated details are persisted.
+        final String updatedAddress = newOrder.customerAddress.trim().isNotEmpty ? newOrder.customerAddress.trim() : newCustomer.address;
+        final String updatedGst    = newOrder.customerGstNumber.trim().isNotEmpty && newOrder.customerGstNumber.trim() != 'URP'
+            ? newOrder.customerGstNumber.trim() : newCustomer.gstNumber;
+        final String updatedMobile = newOrder.customerMobile.trim().isNotEmpty ? newOrder.customerMobile.trim() : newCustomer.mobileNumber;
+        final String updatedPartner = newCustomer.partnerId.trim().isEmpty 
+            ? (newOrder.referredPartnerId.isNotEmpty ? newOrder.referredPartnerId : newOrder.createdBy) 
+            : newCustomer.partnerId;
 
         await customersRef.doc(newCustomer.id).update({
           'address': updatedAddress,

@@ -12,6 +12,8 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     on<LoadCustomers>(_onLoadCustomers);
     on<AddCustomer>(_onAddCustomer);
     on<UpdateCustomerMetrics>(_onUpdateCustomerMetrics);
+    on<UpdateCustomer>(_onUpdateCustomer);
+    on<DeleteCustomer>(_onDeleteCustomer);
   }
 
   Future<void> _onLoadCustomers(LoadCustomers event, Emitter<CustomerState> emit) async {
@@ -38,6 +40,24 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     try {
       await _repository.updateCustomerMetrics(event.customerId, event.orderAmount, ordersDelta: event.ordersDelta);
       // Reload customers after updating
+      add(LoadCustomers());
+    } catch (e) {
+      emit(CustomerError(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateCustomer(UpdateCustomer event, Emitter<CustomerState> emit) async {
+    try {
+      await _repository.updateCustomer(event.customer);
+      add(LoadCustomers());
+    } catch (e) {
+      emit(CustomerError(e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteCustomer(DeleteCustomer event, Emitter<CustomerState> emit) async {
+    try {
+      await _repository.deleteCustomer(event.customerId);
       add(LoadCustomers());
     } catch (e) {
       emit(CustomerError(e.toString()));

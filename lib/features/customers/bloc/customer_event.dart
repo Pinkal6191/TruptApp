@@ -28,3 +28,18 @@ class UpdateCustomerMetrics extends CustomerEvent {
   List<Object> get props => [customerId, orderAmount, ordersDelta];
 }
 
+class UpdateCustomer extends CustomerEvent {
+  final CustomerModel customer;
+  const UpdateCustomer(this.customer);
+
+  @override
+  List<Object> get props => [customer];
+}
+
+class DeleteCustomer extends CustomerEvent {
+  final String customerId;
+  const DeleteCustomer(this.customerId);
+
+  @override
+  List<Object> get props => [customerId];
+}

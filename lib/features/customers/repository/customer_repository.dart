@@ -62,4 +62,20 @@ class CustomerRepository {
       }
     });
   }
+
+  /// Updates a customer's contact/profile details (name, mobile, address, gst).
+  /// Does NOT touch totalOrders or totalAmountSpent.
+  Future<void> updateCustomer(CustomerModel customer) async {
+    await _firestore.collection('customers').doc(customer.id).update({
+      'shopName': customer.shopName.trim(),
+      'mobileNumber': customer.mobileNumber.trim(),
+      'address': customer.address.trim(),
+      'gstNumber': customer.gstNumber.trim(),
+    });
+  }
+
+  /// Deletes a customer document entirely.
+  Future<void> deleteCustomer(String customerId) async {
+    await _firestore.collection('customers').doc(customerId).delete();
+  }
 }
