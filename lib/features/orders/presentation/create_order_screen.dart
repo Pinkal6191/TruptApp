@@ -1033,6 +1033,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (BuildContext context, int index) {
                       final CustomerModel option = options.elementAt(index);
+                      String? partnerName;
+                      if (option.partnerId.isNotEmpty) {
+                        try {
+                          final partner = _partners.firstWhere((p) => p.uid == option.partnerId);
+                          partnerName = partner.name;
+                        } catch (_) {}
+                      }
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         title: Text(
@@ -1051,6 +1058,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                               Text('📍 ${option.address}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.black54))
                             else
                               const Text('📍 No address', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            if (partnerName != null) ...[
+                              const SizedBox(height: 2),
+                              Text('🤝 Referral: $partnerName', style: const TextStyle(fontSize: 11, color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
+                            ],
                           ],
                         ),
                         onTap: () {
