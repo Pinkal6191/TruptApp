@@ -206,14 +206,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   /// Shows a dialog to edit both quantity and price together for a cart item.
-  void _showEditItemDialog(int index) {
+  void _showEditItemDialog(int index, BuildContext dialogContext) {
     final item = _cart[index];
     final qtyController = TextEditingController(text: '${item.quantity}');
     final priceController = TextEditingController(text: item.pricePerCrate.toStringAsFixed(0));
     final formKey = GlobalKey<FormState>();
 
     showDialog(
-      context: context,
+      context: dialogContext,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -340,7 +340,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   );
                 }
               });
-              Navigator.pop(ctx);
+              Navigator.of(ctx).pop();
             },
             child: const Text('Update'),
           ),
@@ -530,6 +530,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }
 
   void _showCartBottomSheet(UserModel user) {
+    final outerContext = context; // capture before bottom sheet opens
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -599,8 +600,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   icon: const Icon(Icons.edit_note, size: 22, color: Colors.blue),
                                   onPressed: () {
                                     Navigator.pop(context); // close sheet first
-                                    Future.delayed(const Duration(milliseconds: 100), () {
-                                      _showEditItemDialog(index);
+                                    Future.delayed(const Duration(milliseconds: 150), () {
+                                      _showEditItemDialog(index, outerContext);
                                     });
                                   },
                                   tooltip: 'Edit Qty & Price',
@@ -616,8 +617,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 GestureDetector(
                                   onTap: () {
                                     Navigator.pop(context);
-                                    Future.delayed(const Duration(milliseconds: 100), () {
-                                      _showEditItemDialog(index);
+                                    Future.delayed(const Duration(milliseconds: 150), () {
+                                      _showEditItemDialog(index, outerContext);
                                     });
                                   },
                                   child: Container(
@@ -706,10 +707,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
 
     return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, authState) {
+      builder: (authContext, authState) {
         if (authState is! Authenticated) return const SizedBox();
         final user = authState.user;
-        final bool isMobile = MediaQuery.of(context).size.width < 600;
+        final bool isMobile = MediaQuery.of(authContext).size.width < 600;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
@@ -828,7 +829,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                                 icon: const Icon(Icons.edit_note, size: 18, color: Colors.blue),
                                                 padding: EdgeInsets.zero,
                                                 constraints: const BoxConstraints(),
-                                                onPressed: () => _showEditItemDialog(index),
+                                                onPressed: () => _showEditItemDialog(index, context),
                                                 tooltip: 'Edit Qty & Price',
                                               ),
                                               const SizedBox(width: 6),
@@ -840,7 +841,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                               ),
                                               // Inline tappable quantity
                                               GestureDetector(
-                                                onTap: () => _showEditItemDialog(index),
+                                                onTap: () => _showEditItemDialog(index, context),
                                                 child: Container(
                                                   constraints: const BoxConstraints(minWidth: 36),
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
