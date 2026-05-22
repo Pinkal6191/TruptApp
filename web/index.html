@@ -170,6 +170,130 @@
         transform: translateY(0);
       }
     }
+
+    /* Premium Glassmorphism Update Banner */
+    #update-banner {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      width: 90%;
+      max-width: 400px;
+      background: rgba(15, 23, 42, 0.75); /* Deep slate with opacity */
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(56, 189, 248, 0.35); /* Neon sky-blue glow border */
+      border-radius: 20px;
+      padding: 16px 20px;
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6),
+                  0 0 30px rgba(56, 189, 248, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 999999;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+      opacity: 0;
+      box-sizing: border-box;
+    }
+
+    #update-banner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .update-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .update-icon {
+      width: 42px;
+      height: 42px;
+      background: rgba(56, 189, 248, 0.12);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #38BDF8;
+      font-size: 22px;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    .update-icon svg {
+      animation: rotateSync 6s linear infinite;
+    }
+
+    @keyframes rotateSync {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(-360deg); }
+    }
+
+    .update-text {
+      flex-grow: 1;
+      text-align: left;
+      font-family: 'Outfit', 'Inter', sans-serif;
+    }
+
+    .update-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin: 0 0 3px 0;
+      letter-spacing: 0.3px;
+    }
+
+    .update-desc {
+      font-size: 12px;
+      color: #94A3B8; /* Slate 400 */
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .update-action-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #38BDF8 0%, #3B82F6 100%);
+      border: none;
+      border-radius: 12px;
+      color: #FFFFFF;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'Outfit', 'Inter', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .update-action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45);
+    }
+
+    .update-action-btn:active {
+      transform: translateY(1px);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #FFFFFF;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
@@ -183,6 +307,128 @@
       <div class="progress-bar-fill"></div>
     </div>
   </div>
-  
+
+  <!-- Beautiful Premium Update Banner -->
+  <div id="update-banner">
+    <div class="update-content">
+      <div class="update-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+      </div>
+      <div class="update-text">
+        <h4 class="update-title">New Update Available</h4>
+        <p class="update-desc">A fresh version is ready. Tap to refresh and load the latest features instantly!</p>
+      </div>
+    </div>
+    <button class="update-action-btn" onclick="window.triggerAppUpdate()">
+      Refresh App Now
+    </button>
+  </div>
+
+  <script>
+    (function() {
+      let currentVersion = null;
+
+      // Fetch the version.json file with a cache buster
+      async function checkVersion(isInitial = false) {
+        try {
+          const cacheBuster = new Date().getTime();
+          const response = await fetch('version.json?cb=' + cacheBuster, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          if (!response.ok) return;
+          const data = await response.json();
+          const serverVersion = data.version + '+' + data.build_number;
+
+          if (isInitial) {
+            currentVersion = serverVersion;
+            // Store the currently loaded version in sessionStorage
+            sessionStorage.setItem('loaded_app_version', currentVersion);
+            console.log('[App Version] Loaded version:', currentVersion);
+          } else {
+            // Retrieve the loaded version from sessionStorage or memory fallback
+            const loadedVersion = sessionStorage.getItem('loaded_app_version') || currentVersion;
+            console.log('[App Version] Check - Loaded:', loadedVersion, 'Server:', serverVersion);
+            if (loadedVersion && loadedVersion !== serverVersion) {
+              console.log('[App Version] Update detected! Showing update banner.');
+              showUpdateBanner();
+            }
+          }
+        } catch (e) {
+          console.warn('Error checking app version:', e);
+        }
+      }
+
+      function showUpdateBanner() {
+        const banner = document.getElementById('update-banner');
+        if (banner && !banner.classList.contains('show')) {
+          banner.classList.add('show');
+        }
+      }
+
+      window.triggerAppUpdate = async function() {
+        const btn = document.querySelector('.update-action-btn');
+        if (btn) {
+          btn.innerHTML = '<span class="spinner"></span> Updating application...';
+          btn.disabled = true;
+        }
+        
+        console.log('[App Version] Triggering full update refresh...');
+        try {
+          // Unregister all service workers to ensure we clean slate
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+              await registration.unregister();
+              console.log('[App Version] Unregistered service worker:', registration.scope);
+            }
+          }
+          
+          // Clear standard caches if supported
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            for (let key of keys) {
+              await caches.delete(key);
+              console.log('[App Version] Cleared cache storage:', key);
+            }
+          }
+        } catch (e) {
+          console.warn('Error clearing service workers/caches:', e);
+        }
+
+        // Hard reload from server
+        console.log('[App Version] Hard-reloading page...');
+        window.location.reload(true);
+      };
+
+      // Run check on startup
+      checkVersion(true);
+
+      // Check again whenever PWA is brought to foreground (visibilitychange/focus)
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          console.log('[App Version] Visibility changed to visible. Checking for updates...');
+          checkVersion(false);
+        }
+      });
+
+      window.addEventListener('focus', function() {
+        console.log('[App Version] Window focused. Checking for updates...');
+        checkVersion(false);
+      });
+
+      // Also check periodically every 60 seconds
+      setInterval(function() {
+        console.log('[App Version] Periodic check running...');
+        checkVersion(false);
+      }, 60000);
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js?v=1.0.1" async=""></script>
 </body></html>
