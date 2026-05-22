@@ -510,7 +510,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
 
     if (widget.existingOrder != null) {
-      context.read<OrderBloc>().add(UpdateOrder(order: order, userId: userRole == 'admin' ? null : uid));
+      context.read<OrderBloc>().add(UpdateOrder(
+        order: order, 
+        userId: userRole == 'admin' ? null : uid,
+        userName: userRole == 'admin' ? null : userName,
+      ));
     } else {
       context.read<OrderBloc>().add(CreateOrder(order: order));
     }

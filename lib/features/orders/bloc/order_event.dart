@@ -28,7 +28,8 @@ class CreateOrder extends OrderEvent {
 class UpdateOrder extends OrderEvent {
   final OrderModel order;
   final String? userId;
-  UpdateOrder({required this.order, this.userId});
+  final String? userName;
+  UpdateOrder({required this.order, this.userId, this.userName});
 }
 
 class UpdateOrderStatus extends OrderEvent {

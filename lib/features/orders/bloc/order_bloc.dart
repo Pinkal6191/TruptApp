@@ -99,8 +99,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         add(LoadOrders());
       } else {
         add(LoadOrders(
-          userId: event.order.createdBy,
-          userName: event.order.partnerName,
+          userId: event.userId,
+          userName: event.userName,
         ));
       }
     } catch (e) {

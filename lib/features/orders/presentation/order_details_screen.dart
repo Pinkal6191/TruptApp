@@ -301,7 +301,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final authState = context.read<AuthBloc>().state as Authenticated;
     final bool isAdmin = authState.user.role == 'admin';
     final bool isCreator = authState.user.uid == _currentOrder.createdBy;
-    final bool canManage = isAdmin || isCreator;
+    final bool isReferredPartner = authState.user.role == 'partner' &&
+        (_currentOrder.referredPartnerId == authState.user.uid ||
+         _currentOrder.orderReference.toLowerCase().trim() == authState.user.name.toLowerCase().trim());
+    final bool isTargetDistributor = authState.user.role == 'distributor' &&
+        (_currentOrder.targetUserId == authState.user.uid);
+    final bool canManage = isAdmin || isCreator || isReferredPartner || isTargetDistributor;
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return BlocListener<OrderBloc, OrderState>(

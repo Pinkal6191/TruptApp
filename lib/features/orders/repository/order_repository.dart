@@ -38,12 +38,13 @@ class OrderRepository {
     }
   }
 
-  // Version: 1.0.2 - Support referredPartnerId and partnerName fallbacks
+  // Version: 1.0.3 - Support referredPartnerId, targetUserId, and partnerName fallbacks
   Future<List<OrderModel>> getOrdersByUser(String userId, {String? userName}) async {
     try {
       final List<Future<QuerySnapshot>> futures = [
         _firestore.collection(collectionName).where('createdBy', isEqualTo: userId).get(),
         _firestore.collection(collectionName).where('referredPartnerId', isEqualTo: userId).get(),
+        _firestore.collection(collectionName).where('targetUserId', isEqualTo: userId).get(),
       ];
       
       if (userName != null && userName.isNotEmpty) {
@@ -89,6 +90,7 @@ class OrderRepository {
     final streams = [
       _firestore.collection(collectionName).where('createdBy', isEqualTo: userId).snapshots(),
       _firestore.collection(collectionName).where('referredPartnerId', isEqualTo: userId).snapshots(),
+      _firestore.collection(collectionName).where('targetUserId', isEqualTo: userId).snapshots(),
     ];
     
     if (userName != null && userName.isNotEmpty) {
