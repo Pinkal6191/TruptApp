@@ -508,10 +508,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       return const Center(child: Text('No orders found.'));
     }
 
-    // Group by partnerName
+    // Group by effective partner name.
+    // Priority: if the order has a referredPartnerId, use orderReference
+    // (which is always stored as the partner's actual name at creation time).
+    // This fixes older orders where partnerName was stored as admin's name
+    // even though the credit belongs to a referred partner.
     final Map<String, List<OrderModel>> grouped = {};
     for (var order in orders) {
-      final name = order.partnerName;
+      final String name = (order.referredPartnerId.isNotEmpty &&
+              order.orderReference.isNotEmpty &&
+              order.orderReference != 'Direct (Online / Call)')
+          ? order.orderReference
+          : order.partnerName;
       grouped.putIfAbsent(name, () => []).add(order);
     }
 
