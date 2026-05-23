@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/quotation_model.dart';
 import '../services/quotation_pdf_service.dart';
 import 'create_quotation_screen.dart';
@@ -20,6 +22,57 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _shareQuotationText(QuotationModel q) async {
+    final buffer = StringBuffer();
+    buffer.writeln('Hello Sir,');
+    buffer.writeln();
+    buffer.writeln('As discussed, please find our quotation for ${q.quotationType.toLowerCase()} water bottles:');
+    buffer.writeln();
+
+    for (var item in q.items) {
+      buffer.writeln('🔹 ${item.productName}: ₹${item.pricePerUnit.toStringAsFixed(0)} per ${item.unitType.toLowerCase().replaceAll("crates", "crate")}');
+    }
+
+    if (q.oneTimeCharge > 0) {
+      buffer.writeln();
+      buffer.writeln('🔹 One-Time Setup & Custom Label Development Charge: ₹${q.oneTimeCharge.toStringAsFixed(0)}');
+      buffer.writeln();
+      buffer.writeln('The setup cost includes custom label design, printing setup, and branding process.');
+    }
+
+    buffer.writeln();
+    buffer.writeln('Looking forward to working with you.');
+    buffer.writeln('Thank you.');
+    buffer.writeln();
+    buffer.writeln('Regards,');
+    buffer.writeln('Trupt – Har Boond Mein Trupti');
+
+    final formattedText = buffer.toString();
+
+    // 1. Copy to clipboard
+    await Clipboard.setData(ClipboardData(text: formattedText));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Message copied to clipboard! Opening WhatsApp...'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+
+    // 2. Launch WhatsApp sharing
+    final whatsappUrl = Uri.parse('https://api.whatsapp.com/send?text=${Uri.encodeComponent(formattedText)}');
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(whatsappUrl);
+      }
+    } catch (_) {}
   }
 
   void _deleteQuotation(QuotationModel quotation) {
@@ -267,6 +320,13 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
+                                // WhatsApp Share Text
+                                IconButton(
+                                  icon: const Icon(Icons.share, color: Colors.green),
+                                  tooltip: 'Copy & Share WhatsApp Text',
+                                  onPressed: () => _shareQuotationText(q),
+                                ),
+                                const SizedBox(width: 4),
                                 // Edit
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined, color: Colors.grey),
