@@ -16,6 +16,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _filterRole = 'All';
   bool _showOnlyPending = false;
+  int _currentPage = 1;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
@@ -121,15 +123,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         items: ['All', 'admin', 'distributor', 'partner']
                             .map((role) => DropdownMenuItem(value: role, child: Text(role.toUpperCase())))
                             .toList(),
-                        onChanged: (val) => setState(() => _filterRole = val!),
+                        onChanged: (val) => setState(() {
+                          _filterRole = val!;
+                          _currentPage = 1;
+                        }),
                       ),
                     ),
                     const SizedBox(width: 12),
                     FilterChip(
                       label: const Text('Pending Approval'),
                       selected: _showOnlyPending,
-                      onSelected: (val) => setState(() => _showOnlyPending = val),
-                      selectedColor: Colors.teal.withOpacity(0.2),
+                      onSelected: (val) => setState(() {
+                        _showOnlyPending = val;
+                        _currentPage = 1;
+                      }),
+                      selectedColor: Colors.teal.withValues(alpha: 0.2),
                       checkmarkColor: Colors.teal,
                     ),
                   ],
@@ -154,25 +162,146 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   users = users.where((u) => !u.isApproved).toList();
                 }
 
+                final totalItems = users.length;
+                final totalPages = (totalItems / _pageSize).ceil();
+                
+                int page = _currentPage;
+                if (page > totalPages && totalPages > 0) {
+                  page = totalPages;
+                }
+                if (page < 1) page = 1;
+
+                final paginatedUsers = users.skip((page - 1) * _pageSize).take(_pageSize).toList();
+
                 if (users.isEmpty) {
                   return const Center(child: Text('No users found matching filters'));
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return UserCard(
-                      user: user,
-                      onDelete: () => _deleteUser(user.uid),
-                      onToggleStatus: () => _toggleStatus(user.uid, user.isActive),
-                      onApprove: () => _approveUser(user.uid),
-                      onEdit: () => _showUserForm(user: user),
-                    );
-                  },
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Showing ${totalItems > 0 ? (page - 1) * _pageSize + 1 : 0} - ${(page * _pageSize) < totalItems ? (page * _pageSize) : totalItems} of $totalItems user${totalItems == 1 ? '' : 's'}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: paginatedUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = paginatedUsers[index];
+                          return UserCard(
+                            user: user,
+                            onDelete: () => _deleteUser(user.uid),
+                            onToggleStatus: () => _toggleStatus(user.uid, user.isActive),
+                            onApprove: () => _approveUser(user.uid),
+                            onEdit: () => _showUserForm(user: user),
+                          );
+                        },
+                      ),
+                    ),
+                    _buildPaginationControls(totalPages),
+                  ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          ElevatedButton.icon(
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            icon: const Icon(Icons.chevron_left, size: 18),
+            label: const Text('Prev', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFEFF6FF),
+              foregroundColor: const Color(0xFF1E3A8A),
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: _currentPage > 1 ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : Colors.transparent,
+                ),
+              ),
+            ),
+          ),
+          Text(
+            'Page $_currentPage of $totalPages',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFEFF6FF),
+              foregroundColor: const Color(0xFF1E3A8A),
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: _currentPage < totalPages ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : Colors.transparent,
+                ),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Next', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                SizedBox(width: 4),
+                Icon(Icons.chevron_right, size: 18),
+              ],
             ),
           ),
         ],

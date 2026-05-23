@@ -19,6 +19,9 @@ class CustomerListScreen extends StatefulWidget {
 class _CustomerListScreenState extends State<CustomerListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _filterType = 'All'; // 'All', 'Repeated'
+  int _currentPage = 1;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
@@ -313,12 +316,27 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             return const Center(child: CircularProgressIndicator());
           } else if (state is CustomersLoaded) {
             final query = _searchQuery.toLowerCase().trim();
-            final filteredCustomers = state.customers.where((c) {
+            var filteredCustomers = state.customers.where((c) {
               if (query.isEmpty) return true;
               return c.shopName.toLowerCase().contains(query) ||
                   c.mobileNumber.toLowerCase().contains(query) ||
                   c.address.toLowerCase().contains(query);
             }).toList();
+
+            // Apply All / Repeated Orders filter
+            if (_filterType == 'Repeated') {
+              filteredCustomers = filteredCustomers.where((c) => c.totalOrders > 1).toList();
+            }
+
+            final totalItems = filteredCustomers.length;
+            final totalPages = (totalItems / _pageSize).ceil();
+
+            // Adjust current page if it goes out of bounds due to filtering
+            if (_currentPage > totalPages && totalPages > 0) {
+              _currentPage = totalPages;
+            }
+
+            final paginatedCustomers = filteredCustomers.skip((_currentPage - 1) * _pageSize).take(_pageSize).toList();
 
             return Column(
               children: [
@@ -327,7 +345,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                    onChanged: (val) => setState(() {
+                      _searchQuery = val;
+                      _currentPage = 1;
+                    }),
                     decoration: InputDecoration(
                       hintText: 'Search by name, mobile, or address...',
                       prefixIcon:
@@ -337,7 +358,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                               icon: const Icon(Icons.clear, color: Colors.grey),
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() => _searchQuery = '');
+                                setState(() {
+                                  _searchQuery = '';
+                                  _currentPage = 1;
+                                });
                               },
                             )
                           : null,
@@ -362,13 +386,69 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   ),
                 ),
 
+                // Filter chips for All / Repeated Orders
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        label: const Text('All Customers'),
+                        selected: _filterType == 'All',
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _filterType = 'All';
+                              _currentPage = 1;
+                            });
+                          }
+                        },
+                        selectedColor: const Color(0xFFEFF6FF),
+                        checkmarkColor: const Color(0xFF1E3A8A),
+                        labelStyle: TextStyle(
+                          color: _filterType == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                          fontWeight: _filterType == 'All' ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(
+                          color: _filterType == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        label: const Text('Repeated Orders'),
+                        selected: _filterType == 'Repeated',
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _filterType = 'Repeated';
+                              _currentPage = 1;
+                            });
+                          }
+                        },
+                        selectedColor: const Color(0xFFECFDF5),
+                        checkmarkColor: const Color(0xFF10B981),
+                        labelStyle: TextStyle(
+                          color: _filterType == 'Repeated' ? const Color(0xFF047857) : Colors.grey.shade600,
+                          fontWeight: _filterType == 'Repeated' ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(
+                          color: _filterType == 'Repeated' ? const Color(0xFF34D399).withValues(alpha: 0.5) : Colors.grey.shade300,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Count badge
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      '${filteredCustomers.length} customer${filteredCustomers.length == 1 ? '' : 's'}',
+                      'Showing ${totalItems > 0 ? (_currentPage - 1) * _pageSize + 1 : 0} - ${(_currentPage * _pageSize) < totalItems ? (_currentPage * _pageSize) : totalItems} of $totalItems customer${totalItems == 1 ? '' : 's'}',
                       style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,
@@ -379,7 +459,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
                 // List
                 Expanded(
-                  child: filteredCustomers.isEmpty
+                  child: paginatedCustomers.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -389,7 +469,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                               const SizedBox(height: 12),
                               Text(
                                 _searchQuery.isEmpty
-                                    ? 'No customers yet.\nTap "+ Add Customer" to get started.'
+                                    ? 'No customers found.'
                                     : 'No matching customers found.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
@@ -400,10 +480,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         )
                       : ListView.builder(
                           padding:
-                              const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                          itemCount: filteredCustomers.length,
+                              const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                          itemCount: paginatedCustomers.length,
                           itemBuilder: (context, index) {
-                            final customer = filteredCustomers[index];
+                            final customer = paginatedCustomers[index];
                             return _CustomerCard(
                               customer: customer,
                               onEdit: () =>
@@ -413,6 +493,45 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           },
                         ),
                 ),
+
+                // Pagination Controls
+                if (totalPages > 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _currentPage > 1
+                              ? () => setState(() => _currentPage--)
+                              : null,
+                          icon: const Icon(Icons.arrow_back_ios, size: 14),
+                          label: const Text('Prev', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF1E3A8A),
+                          ),
+                        ),
+                        Text(
+                          'Page $_currentPage of $totalPages',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF475569)),
+                        ),
+                        TextButton.icon(
+                          onPressed: _currentPage < totalPages
+                              ? () => setState(() => _currentPage++)
+                              : null,
+                          label: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             );
           } else if (state is CustomerError) {

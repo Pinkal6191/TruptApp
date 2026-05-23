@@ -21,6 +21,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _statusFilter = 'All'; // 'All', 'Pending'
+  int _currentPage = 1;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
@@ -189,6 +191,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
+                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -201,6 +204,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 _searchController.clear();
                                 setState(() {
                                   _searchQuery = '';
+                                  _currentPage = 1;
                                 });
                               },
                             )
@@ -234,6 +238,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           if (selected) {
                             setState(() {
                               _statusFilter = 'All';
+                              _currentPage = 1;
                             });
                           }
                         },
@@ -257,6 +262,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           if (selected) {
                             setState(() {
                               _statusFilter = 'Pending';
+                              _currentPage = 1;
                             });
                           }
                         },
@@ -294,237 +300,269 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   Widget _buildStandardView(List<OrderModel> orders) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
-        return InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
-                .then((_) => RouteTracker.saveRoute('order_history'));
-          },
-          child: Card(
-            elevation: 2,
-            shadowColor: Colors.black12,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        order.shopName.isNotEmpty ? order.shopName : order.partnerName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      DateFormat('MMM dd, yyyy').format(order.createdAt),
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-                if (order.creatorRole == 'admin') ...[
-                  const SizedBox(height: 4),
-                  Row(
+    final totalItems = orders.length;
+    final totalPages = (totalItems / _pageSize).ceil();
+    
+    // Adjust current page if it is out of bounds due to filtering
+    int page = _currentPage;
+    if (page > totalPages && totalPages > 0) {
+      page = totalPages;
+    }
+    
+    final paginated = orders.skip((page - 1) * _pageSize).take(_pageSize).toList();
+
+    return Column(
+      children: [
+        // Count banner
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Showing ${totalItems > 0 ? (page - 1) * _pageSize + 1 : 0} - ${(page * _pageSize) < totalItems ? (page * _pageSize) : totalItems} of $totalItems order${totalItems == 1 ? '' : 's'}',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: paginated.length,
+            itemBuilder: (context, index) {
+              final order = paginated[index];
+              return InkWell(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
+                      .then((_) => RouteTracker.saveRoute('order_history'));
+                },
+                child: Card(
+                  elevation: 2,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.info_outline, size: 12, color: Colors.blue.shade700),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Ref: ${order.orderReference}',
-                        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 8),
-                ...order.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Text(
-                              '${item.quantity}x ${item.productName}',
+                              order.shopName.isNotEmpty ? order.shopName : order.partnerName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text('₹${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}'),
+                          Text(
+                            DateFormat('MMM dd, yyyy').format(order.createdAt),
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
                         ],
                       ),
-                    )),
-                const SizedBox(height: 8),
-                const Divider(),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text(
-                      '₹${order.finalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E3A8A)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(order.deliveryStatus).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Delivery: ${order.deliveryStatus}',
-                        style: TextStyle(
-                          color: _getStatusColor(order.deliveryStatus),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                      if (order.creatorRole == 'admin') ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 12, color: Colors.blue.shade700),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Ref: ${order.orderReference}',
+                              style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(order.paymentStatus).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Payment: ${order.paymentStatus}',
-                        style: TextStyle(
-                          color: _getStatusColor(order.paymentStatus),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(),
-                Row(
-                  children: [
-                    // Delete Button
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      tooltip: 'Delete Order',
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                      onPressed: () {
-                        final authState = context.read<AuthBloc>().state;
-                        final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                        final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                        showDialog(
-                          context: context,
-                          builder: (dialogContext) => AlertDialog(
-                            title: const Text('Delete Order'),
-                            content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
-                            actions: [
-                              TextButton(
-                                child: const Text('Cancel'),
-                                onPressed: () => Navigator.pop(dialogContext),
-                              ),
-                              TextButton(
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                onPressed: () {
-                                  context.read<OrderBloc>().add(DeleteOrder(
-                                        order: order,
-                                        userId: userId,
-                                        userName: userName,
-                                      ));
-                                  Navigator.pop(dialogContext);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Deleting order...')),
-                                  );
-                                },
-                                child: const Text('Delete'),
-                              ),
-                            ],
+                      ],
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      ...order.items.map((item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${item.quantity}x ${item.productName}',
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('₹${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}'),
+                              ],
+                            ),
+                          )),
+                      const SizedBox(height: 8),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                          Text(
+                            '₹${order.finalAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E3A8A)),
                           ),
-                        );
-                      },
-                    ),
-                    const Spacer(),
-                    if (order.deliveryStatus != 'Delivered')
-                      TextButton.icon(
-                        icon: const Icon(Icons.check_circle_outline, size: 16),
-                        label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
-                        onPressed: () {
-                          final authState = context.read<AuthBloc>().state;
-                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                          context.read<OrderBloc>().add(UpdateOrderStatus(
-                                orderId: order.id,
-                                statusType: 'deliveryStatus',
-                                newStatus: 'Delivered',
-                                userId: userId,
-                                userName: userName,
-                              ));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
-                        },
+                        ],
                       ),
-                    const SizedBox(width: 8),
-                    if (order.paymentStatus != 'Paid')
-                      TextButton.icon(
-                        icon: const Icon(Icons.payments_outlined, size: 16),
-                        label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
-                        onPressed: () {
-                          final authState = context.read<AuthBloc>().state;
-                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                          context.read<OrderBloc>().add(UpdateOrderPayment(
-                                orderId: order.id,
-                                paidAmount: order.finalAmount,
-                                paymentStatus: 'Paid',
-                                userId: userId,
-                                userName: userName,
-                              ));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
-                        },
-                      )
-                    else
-                      TextButton.icon(
-                        icon: const Icon(Icons.money_off_outlined, size: 16),
-                        label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                        onPressed: () {
-                          final authState = context.read<AuthBloc>().state;
-                          final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                          final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                          context.read<OrderBloc>().add(UpdateOrderPayment(
-                                orderId: order.id,
-                                paidAmount: 0.0,
-                                paymentStatus: 'Pending',
-                                userId: userId,
-                                userName: userName,
-                              ));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Pending (Unpaid)')));
-                        },
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(order.deliveryStatus).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Delivery: ${order.deliveryStatus}',
+                              style: TextStyle(
+                                color: _getStatusColor(order.deliveryStatus),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(order.paymentStatus).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Payment: ${order.paymentStatus}',
+                              style: TextStyle(
+                                color: _getStatusColor(order.paymentStatus),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      Row(
+                        children: [
+                          // Delete Button
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: 'Delete Order',
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              final authState = context.read<AuthBloc>().state;
+                              final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                              final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                              showDialog(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Delete Order'),
+                                  content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
+                                  actions: [
+                                    TextButton(
+                                      child: const Text('Cancel'),
+                                      onPressed: () => Navigator.pop(dialogContext),
+                                    ),
+                                    TextButton(
+                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                      onPressed: () {
+                                        context.read<OrderBloc>().add(DeleteOrder(
+                                              order: order,
+                                              userId: userId,
+                                              userName: userName,
+                                            ));
+                                        Navigator.pop(dialogContext);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Deleting order...')),
+                                        );
+                                      },
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const Spacer(),
+                          if (order.deliveryStatus != 'Delivered')
+                            TextButton.icon(
+                              icon: const Icon(Icons.check_circle_outline, size: 16),
+                              label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
+                              onPressed: () {
+                                final authState = context.read<AuthBloc>().state;
+                                final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                                final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                                context.read<OrderBloc>().add(UpdateOrderStatus(
+                                      orderId: order.id,
+                                      statusType: 'deliveryStatus',
+                                      newStatus: 'Delivered',
+                                      userId: userId,
+                                      userName: userName,
+                                    ));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Delivered')));
+                              },
+                            ),
+                          const SizedBox(width: 8),
+                          if (order.paymentStatus != 'Paid')
+                            TextButton.icon(
+                              icon: const Icon(Icons.payments_outlined, size: 16),
+                              label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: const Color(0xFFF59E0B)),
+                              onPressed: () {
+                                final authState = context.read<AuthBloc>().state;
+                                final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                                final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                                context.read<OrderBloc>().add(UpdateOrderPayment(
+                                      orderId: order.id,
+                                      paidAmount: order.finalAmount,
+                                      paymentStatus: 'Paid',
+                                      userId: userId,
+                                      userName: userName,
+                                    ));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
+                              },
+                            )
+                          else
+                            TextButton.icon(
+                              icon: const Icon(Icons.money_off_outlined, size: 16),
+                              label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              onPressed: () {
+                                final authState = context.read<AuthBloc>().state;
+                                final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                                final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                                context.read<OrderBloc>().add(UpdateOrderPayment(
+                                      orderId: order.id,
+                                      paidAmount: 0.0,
+                                      paymentStatus: 'Pending',
+                                      userId: userId,
+                                      userName: userName,
+                                    ));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Pending (Unpaid)')));
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+                ),
+              );
+            },
           ),
-          ),
-        );
-      },
+        ),
+        _buildPaginationControls(totalPages),
+      ],
     );
   }
 
@@ -589,130 +627,251 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       grouped.putIfAbsent(name, () => []).add(order);
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: grouped.keys.length,
-      itemBuilder: (context, index) {
-        final creatorName = grouped.keys.elementAt(index);
-        final creatorOrders = grouped[creatorName]!;
-        final totalAmount = creatorOrders.fold(0.0, (sum, o) => sum + o.finalAmount);
-        final totalPending = creatorOrders.fold(0.0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
+    final totalItems = grouped.keys.length;
+    final totalPages = (totalItems / _pageSize).ceil();
+    int page = _currentPage;
+    if (page > totalPages && totalPages > 0) {
+      page = totalPages;
+    }
+    if (page < 1) page = 1;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: ExpansionTile(
-            title: Text(creatorName, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Row(
-              children: [
-                Text('${creatorOrders.length} Orders • ₹${totalAmount.toStringAsFixed(0)}'),
-                if (totalPending > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Pending ₹${totalPending.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ],
+    final paginatedKeys = grouped.keys.skip((page - 1) * _pageSize).take(_pageSize).toList();
+
+    return Column(
+      children: [
+        if (totalItems > 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Showing ${totalItems > 0 ? (page - 1) * _pageSize + 1 : 0} - ${(page * _pageSize) < totalItems ? (page * _pageSize) : totalItems} of $totalItems group${totalItems == 1 ? '' : 's'}',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500),
+              ),
             ),
-            children: [
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: creatorOrders.length,
-                itemBuilder: (context, subIndex) {
-                  final order = creatorOrders[subIndex];
-                  final customerDisplay = order.shopName.isNotEmpty ? order.shopName : '(No Shop Name)';
-                  final pending = order.remainingAmount;
-                  final isOverpaid = pending < 0;
+          ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: paginatedKeys.length,
+            itemBuilder: (context, index) {
+              final creatorName = paginatedKeys[index];
+              final creatorOrders = grouped[creatorName]!;
+              final totalAmount = creatorOrders.fold(0.0, (sum, o) => sum + o.finalAmount);
+              final totalPending = creatorOrders.fold(0.0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
 
-                  return InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
-                          .then((_) => RouteTracker.saveRoute('order_history'));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Row 1: Customer/Shop name + Bill amount
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  customerDisplay,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                '₹${order.finalAmount.toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E3A8A)),
-                              ),
-                            ],
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ExpansionTile(
+                  title: Text(creatorName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Row(
+                    children: [
+                      Text('${creatorOrders.length} Orders • ₹${totalAmount.toStringAsFixed(0)}'),
+                      if (totalPending > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          const SizedBox(height: 4),
-                          // Row 2: Date + Invoice number
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey.shade500),
-                              const SizedBox(width: 4),
-                              Text(
-                                DateFormat('dd MMM yyyy').format(order.createdAt),
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                              if (order.invoiceNumber.isNotEmpty) ...[
-                                const SizedBox(width: 12),
-                                Icon(Icons.receipt_outlined, size: 12, color: Colors.grey.shade500),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '#${order.invoiceNumber}',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          child: Text(
+                            'Pending ₹${totalPending.toStringAsFixed(0)}',
+                            style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  children: [
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: creatorOrders.length,
+                      itemBuilder: (context, subIndex) {
+                        final order = creatorOrders[subIndex];
+                        final customerDisplay = order.shopName.isNotEmpty ? order.shopName : '(No Shop Name)';
+                        final pending = order.remainingAmount;
+                        final isOverpaid = pending < 0;
+
+                        return InkWell(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
+                                .then((_) => RouteTracker.saveRoute('order_history'));
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Row 1: Customer/Shop name + Bill amount
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        customerDisplay,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      '₹${order.finalAmount.toStringAsFixed(0)}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E3A8A)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // Row 2: Date + Invoice number
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey.shade500),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      DateFormat('dd MMM yyyy').format(order.createdAt),
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                    if (order.invoiceNumber.isNotEmpty) ...[
+                                      const SizedBox(width: 12),
+                                      Icon(Icons.receipt_outlined, size: 12, color: Colors.grey.shade500),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '#${order.invoiceNumber}',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // Row 3: Delivery + Payment status badges + Due/Paid badge
+                                Row(
+                                  children: [
+                                    _adminStatusBadge(order.deliveryStatus, _deliveryColor(order.deliveryStatus)),
+                                    const SizedBox(width: 6),
+                                    _adminStatusBadge(order.paymentStatus, _paymentColor(order.paymentStatus)),
+                                    const Spacer(),
+                                    if (isOverpaid)
+                                      _adminAmountBadge('Return ₹${pending.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
+                                    else if (pending > 0)
+                                      _adminAmountBadge('Due ₹${pending.toStringAsFixed(0)}', Colors.red.shade700, Colors.red.shade50)
+                                    else
+                                      _adminAmountBadge('Fully Paid ✓', Colors.green.shade700, Colors.green.shade50),
+                                  ],
                                 ),
                               ],
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          // Row 3: Delivery + Payment status badges + Due/Paid badge
-                          Row(
-                            children: [
-                              _adminStatusBadge(order.deliveryStatus, _deliveryColor(order.deliveryStatus)),
-                              const SizedBox(width: 6),
-                              _adminStatusBadge(order.paymentStatus, _paymentColor(order.paymentStatus)),
-                              const Spacer(),
-                              if (isOverpaid)
-                                _adminAmountBadge('Return ₹${pending.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
-                              else if (pending > 0)
-                                _adminAmountBadge('Due ₹${pending.toStringAsFixed(0)}', Colors.red.shade700, Colors.red.shade50)
-                              else
-                                _adminAmountBadge('Fully Paid ✓', Colors.green.shade700, Colors.green.shade50),
-                            ],
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-            ],
+                  ],
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+        _buildPaginationControls(totalPages),
+      ],
+    );
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          ElevatedButton.icon(
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            icon: const Icon(Icons.chevron_left, size: 18),
+            label: const Text('Prev', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFEFF6FF),
+              foregroundColor: const Color(0xFF1E3A8A),
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: _currentPage > 1 ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : Colors.transparent,
+                ),
+              ),
+            ),
+          ),
+          Text(
+            'Page $_currentPage of $totalPages',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: const Color(0xFFEFF6FF),
+              foregroundColor: const Color(0xFF1E3A8A),
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: _currentPage < totalPages ? const Color(0xFF3B82F6).withValues(alpha: 0.2) : Colors.transparent,
+                ),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Next', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                SizedBox(width: 4),
+                Icon(Icons.chevron_right, size: 18),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
