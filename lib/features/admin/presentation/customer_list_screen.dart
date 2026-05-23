@@ -273,72 +273,70 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Customer Directory'),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E3A8A),
-        actions: [
-          BlocBuilder<CustomerBloc, CustomerState>(
-            builder: (context, state) {
-              if (state is CustomersLoaded && state.customers.isNotEmpty) {
-                final query = _searchQuery.toLowerCase().trim();
-                final filtered = state.customers.where((c) {
-                  if (query.isEmpty) return true;
-                  return c.shopName.toLowerCase().contains(query) ||
-                      c.mobileNumber.toLowerCase().contains(query) ||
-                      c.address.toLowerCase().contains(query);
-                }).toList();
-                return IconButton(
-                  icon: const Icon(Icons.download),
-                  tooltip: 'Export CSV',
-                  onPressed: () => _exportToCsv(filtered),
-                );
-              }
-              return const SizedBox();
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCustomerDialog(),
-        backgroundColor: const Color(0xFF1E3A8A),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Add Customer'),
-        elevation: 4,
-      ),
-      body: BlocBuilder<CustomerBloc, CustomerState>(
-        builder: (context, state) {
-          if (state is CustomerLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is CustomersLoaded) {
-            final query = _searchQuery.toLowerCase().trim();
-            var filteredCustomers = state.customers.where((c) {
-              if (query.isEmpty) return true;
-              return c.shopName.toLowerCase().contains(query) ||
-                  c.mobileNumber.toLowerCase().contains(query) ||
-                  c.address.toLowerCase().contains(query);
-            }).toList();
+    return BlocBuilder<CustomerBloc, CustomerState>(
+      builder: (context, state) {
+        if (state is CustomerLoading) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            appBar: AppBar(
+              title: const Text('Customer Directory'),
+              elevation: 0,
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF1E3A8A),
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        } else if (state is CustomersLoaded) {
+          final query = _searchQuery.toLowerCase().trim();
+          var filteredCustomers = state.customers.where((c) {
+            if (query.isEmpty) return true;
+            return c.shopName.toLowerCase().contains(query) ||
+                c.mobileNumber.toLowerCase().contains(query) ||
+                c.address.toLowerCase().contains(query);
+          }).toList();
 
-            // Apply All / Repeated Orders filter
-            if (_filterType == 'Repeated') {
-              filteredCustomers = filteredCustomers.where((c) => c.totalOrders > 1).toList();
-            }
+          // Apply All / Repeated Orders filter
+          if (_filterType == 'Repeated') {
+            filteredCustomers = filteredCustomers.where((c) => c.totalOrders > 1).toList();
+          }
 
-            final totalItems = filteredCustomers.length;
-            final totalPages = (totalItems / _pageSize).ceil();
+          final totalItems = filteredCustomers.length;
+          final totalPages = (totalItems / _pageSize).ceil();
+          final hasBottomBar = totalPages > 1;
 
-            // Adjust current page if it goes out of bounds due to filtering
-            if (_currentPage > totalPages && totalPages > 0) {
-              _currentPage = totalPages;
-            }
+          // Adjust current page if it goes out of bounds due to filtering
+          if (_currentPage > totalPages && totalPages > 0) {
+            _currentPage = totalPages;
+          }
 
-            final paginatedCustomers = filteredCustomers.skip((_currentPage - 1) * _pageSize).take(_pageSize).toList();
+          final paginatedCustomers = filteredCustomers.skip((_currentPage - 1) * _pageSize).take(_pageSize).toList();
 
-            return Column(
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            appBar: AppBar(
+              title: const Text('Customer Directory'),
+              elevation: 0,
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF1E3A8A),
+              actions: [
+                if (state.customers.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.download),
+                    tooltip: 'Export CSV',
+                    onPressed: () => _exportToCsv(filteredCustomers),
+                  ),
+              ],
+            ),
+            floatingActionButtonLocation: _AboveBottomBarFabLocation(hasBottomBar: hasBottomBar),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () => _showCustomerDialog(),
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.person_add),
+              label: const Text('Add Customer'),
+              elevation: 4,
+            ),
+            body: Column(
               children: [
                 // Search bar
                 Padding(
@@ -351,8 +349,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     }),
                     decoration: InputDecoration(
                       hintText: 'Search by name, mobile, or address...',
-                      prefixIcon:
-                          const Icon(Icons.search, color: Color(0xFF1E3A8A)),
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, color: Colors.grey),
@@ -367,8 +364,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           : null,
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -379,8 +375,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF1E3A8A), width: 1.5),
+                        borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
                       ),
                     ),
                   ),
@@ -464,30 +459,24 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.person_search,
-                                  size: 60, color: Colors.grey.shade300),
+                              Icon(Icons.person_search, size: 60, color: Colors.grey.shade300),
                               const SizedBox(height: 12),
                               Text(
-                                _searchQuery.isEmpty
-                                    ? 'No customers found.'
-                                    : 'No matching customers found.',
+                                _searchQuery.isEmpty ? 'No customers found.' : 'No matching customers found.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 14),
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                           itemCount: paginatedCustomers.length,
                           itemBuilder: (context, index) {
                             final customer = paginatedCustomers[index];
                             return _CustomerCard(
                               customer: customer,
-                              onEdit: () =>
-                                  _showCustomerDialog(existing: customer),
+                              onEdit: () => _showCustomerDialog(existing: customer),
                               onDelete: () => _confirmDelete(customer),
                             );
                           },
@@ -506,9 +495,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         TextButton.icon(
-                          onPressed: _currentPage > 1
-                              ? () => setState(() => _currentPage--)
-                              : null,
+                          onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
                           icon: const Icon(Icons.arrow_back_ios, size: 14),
                           label: const Text('Prev', style: TextStyle(fontWeight: FontWeight.bold)),
                           style: TextButton.styleFrom(
@@ -520,9 +507,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF475569)),
                         ),
                         TextButton.icon(
-                          onPressed: _currentPage < totalPages
-                              ? () => setState(() => _currentPage++)
-                              : null,
+                          onPressed: _currentPage < totalPages ? () => setState(() => _currentPage++) : null,
                           label: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
                           icon: const Icon(Icons.arrow_forward_ios, size: 14),
                           style: TextButton.styleFrom(
@@ -533,15 +518,36 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     ),
                   ),
               ],
-            );
-          } else if (state is CustomerError) {
-            return Center(
-                child: Text('Error: ${state.message}',
-                    style: const TextStyle(color: Colors.red)));
-          }
-          return const SizedBox();
-        },
-      ),
+            ),
+          );
+        } else if (state is CustomerError) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            appBar: AppBar(
+              title: const Text('Customer Directory'),
+              elevation: 0,
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF1E3A8A),
+            ),
+            body: Center(
+              child: Text(
+                'Error: ${state.message}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          );
+        }
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          appBar: AppBar(
+            title: const Text('Customer Directory'),
+            elevation: 0,
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF1E3A8A),
+          ),
+          body: const SizedBox(),
+        );
+      },
     );
   }
 }
@@ -678,5 +684,23 @@ class _CustomerCard extends StatelessWidget {
                 fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
     );
+  }
+}
+
+class _AboveBottomBarFabLocation extends FloatingActionButtonLocation {
+  final bool hasBottomBar;
+  const _AboveBottomBarFabLocation({required this.hasBottomBar});
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry geometry) {
+    final double fabWidth = geometry.floatingActionButtonSize.width;
+    final double fabHeight = geometry.floatingActionButtonSize.height;
+    final double screenWidth = geometry.scaffoldSize.width;
+    final double screenHeight = geometry.scaffoldSize.height;
+    
+    final double x = screenWidth - fabWidth - 16;
+    final double y = screenHeight - fabHeight - 16 - (hasBottomBar ? 60 : 0);
+    
+    return Offset(x, y);
   }
 }
