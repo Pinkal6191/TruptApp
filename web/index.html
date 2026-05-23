@@ -328,7 +328,8 @@
 
   <script>
     (function() {
-      let currentVersion = null;
+      // The actual built version injected during compilation
+      const RUNNING_VERSION = "{{APP_VERSION}}";
 
       // Fetch the version.json file with a cache buster
       async function checkVersion(isInitial = false) {
@@ -345,19 +346,12 @@
           const data = await response.json();
           const serverVersion = data.version + '+' + data.build_number;
 
-          if (isInitial) {
-            currentVersion = serverVersion;
-            // Store the currently loaded version in sessionStorage
-            sessionStorage.setItem('loaded_app_version', currentVersion);
-            console.log('[App Version] Loaded version:', currentVersion);
-          } else {
-            // Retrieve the loaded version from sessionStorage or memory fallback
-            const loadedVersion = sessionStorage.getItem('loaded_app_version') || currentVersion;
-            console.log('[App Version] Check - Loaded:', loadedVersion, 'Server:', serverVersion);
-            if (loadedVersion && loadedVersion !== serverVersion) {
-              console.log('[App Version] Update detected! Showing update banner.');
-              showUpdateBanner();
-            }
+          const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+3' : RUNNING_VERSION;
+          console.log('[App Version] Check - Running:', loadedVersion, 'Server:', serverVersion);
+
+          if (loadedVersion !== serverVersion) {
+            console.log('[App Version] Update detected! Showing update banner.');
+            showUpdateBanner();
           }
         } catch (e) {
           console.warn('Error checking app version:', e);
@@ -427,8 +421,13 @@
         console.log('[App Version] Periodic check running...');
         checkVersion(false);
       }, 60000);
+
+      // Dynamic loading of flutter_bootstrap.js with cache-busting version query parameter
+      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1' : RUNNING_VERSION;
+      const script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(loadedVersion);
+      script.async = true;
+      document.body.appendChild(script);
     })();
   </script>
-
-  <script src="flutter_bootstrap.js?v=1.0.1" async=""></script>
 </body></html>
