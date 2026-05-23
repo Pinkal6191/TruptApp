@@ -30,21 +30,30 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
     int count200ml = 0;
     int count500ml = 0;
     int count1L = 0;
+    double totalCrateRevenue = 0.0;
 
     for (var order in filteredOrders) {
       for (var item in order.items) {
         final name = item.productName.toLowerCase();
+        bool matched = false;
         if (name.contains('200')) {
           count200ml += item.quantity;
+          matched = true;
         } else if (name.contains('500')) {
           count500ml += item.quantity;
+          matched = true;
         } else if (name.contains('1l') || name.contains('1 l') || name.contains('1ltr') || name.contains('1 ltr')) {
           count1L += item.quantity;
+          matched = true;
+        }
+        if (matched) {
+          totalCrateRevenue += item.pricePerCrate * item.quantity;
         }
       }
     }
 
     final totalCrates = count200ml + count500ml + count1L;
+    final avgCrateCost = totalCrates > 0 ? (totalCrateRevenue / totalCrates) : 0.0;
 
     // Helper to calculate percentages
     double pct200 = totalCrates > 0 ? (count200ml / totalCrates) : 0.0;
@@ -136,7 +145,7 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
             ),
             const Divider(height: 30),
 
-            // Total Crate Sales Indicator
+            // Total Crate Sales & Average Cost Indicator
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
@@ -144,20 +153,42 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  const Text(
-                    'Total Crates Sold:',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Crates Sold:',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      Text(
+                        '$totalCrates Crates',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '$totalCrates Crates',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E3A8A),
-                    ),
+                  const Divider(height: 16, thickness: 1, color: Color(0xFFE2E8F0)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Avg. Price per Crate:',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      Text(
+                        '₹${avgCrateCost.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

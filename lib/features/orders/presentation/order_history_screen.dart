@@ -20,6 +20,7 @@ class OrderHistoryScreen extends StatefulWidget {
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _statusFilter = 'All'; // 'All', 'Pending'
 
   @override
   void initState() {
@@ -154,13 +155,26 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
             final query = _searchQuery.toLowerCase().trim();
             final filteredOrders = sortedOrders.where((order) {
-              if (query.isEmpty) return true;
-              final matchShop = order.shopName.toLowerCase().contains(query);
-              final matchPartner = order.partnerName.toLowerCase().contains(query);
-              final matchRef = order.orderReference.toLowerCase().contains(query);
-              final matchInvoice = order.invoiceNumber.toLowerCase().contains(query);
-              final matchProducts = order.items.any((item) => item.productName.toLowerCase().contains(query));
-              return matchShop || matchPartner || matchRef || matchInvoice || matchProducts;
+              // 1. Search Query filter
+              if (query.isNotEmpty) {
+                final matchShop = order.shopName.toLowerCase().contains(query);
+                final matchPartner = order.partnerName.toLowerCase().contains(query);
+                final matchRef = order.orderReference.toLowerCase().contains(query);
+                final matchInvoice = order.invoiceNumber.toLowerCase().contains(query);
+                final matchProducts = order.items.any((item) => item.productName.toLowerCase().contains(query));
+                if (!matchShop && !matchPartner && !matchRef && !matchInvoice && !matchProducts) {
+                  return false;
+                }
+              }
+
+              // 2. Status filter (Pending Delivery OR Pending Payment)
+              if (_statusFilter == 'Pending') {
+                final isPendingDelivery = order.deliveryStatus.toLowerCase() != 'delivered';
+                final isPendingPayment = order.paymentStatus.toLowerCase() != 'paid';
+                return isPendingDelivery || isPendingPayment;
+              }
+
+              return true;
             }).toList();
 
             final authState = context.read<AuthBloc>().state;
@@ -207,6 +221,58 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
                       ),
                     ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        label: const Text('All Orders'),
+                        selected: _statusFilter == 'All',
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _statusFilter = 'All';
+                            });
+                          }
+                        },
+                        selectedColor: const Color(0xFFEFF6FF),
+                        checkmarkColor: const Color(0xFF1E3A8A),
+                        labelStyle: TextStyle(
+                          color: _statusFilter == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                          fontWeight: _statusFilter == 'All' ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(
+                          color: _statusFilter == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        label: const Text('Pending Orders'),
+                        selected: _statusFilter == 'Pending',
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _statusFilter = 'Pending';
+                            });
+                          }
+                        },
+                        selectedColor: const Color(0xFFFEF3C7),
+                        checkmarkColor: const Color(0xFFD97706),
+                        labelStyle: TextStyle(
+                          color: _statusFilter == 'Pending' ? const Color(0xFFB45309) : Colors.grey.shade600,
+                          fontWeight: _statusFilter == 'Pending' ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(
+                          color: _statusFilter == 'Pending' ? const Color(0xFFFBBF24).withValues(alpha: 0.5) : Colors.grey.shade300,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
