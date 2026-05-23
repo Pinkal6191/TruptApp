@@ -36,6 +36,7 @@ import '../../../core/models/customer_model.dart';
 import '../../../core/models/order_model.dart';
 import '../../customers/bloc/customer_bloc.dart';
 import '../../customers/bloc/customer_event.dart';
+import '../../quotations/presentation/quotation_list_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -348,6 +349,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         Icons.inventory,
                         Colors.orange,
                         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductManagementScreen())).then((_) => RouteTracker.clearRoute()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Quotations',
+                        'Draft proforma estimates',
+                        Icons.request_quote,
+                        Colors.cyan.shade700,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuotationListScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
                     const SizedBox(width: 12),
