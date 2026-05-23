@@ -103,6 +103,11 @@ class QuotationPdfService {
                           _buildTotalRow('CGST (2.5%):', quotation.gstAmount / 2, font),
                           pw.Divider(color: PdfColors.grey300),
                         ],
+                        if (quotation.oneTimeCharge > 0) ...[
+                          _buildTotalRow('1-Time Setup/Mold Cost:', quotation.oneTimeCharge, font, color: PdfColors.blueGrey800),
+                          pw.SizedBox(height: 4),
+                          pw.Divider(color: PdfColors.grey300),
+                        ],
                         _buildTotalRow('Estimated Grand Total:', quotation.finalAmount, boldFont, isTotal: true, color: PdfColors.blue900),
                       ],
                     ),

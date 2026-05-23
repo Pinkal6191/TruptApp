@@ -45,6 +45,7 @@ class QuotationModel {
   final List<QuotationItemModel> items;
   final double subtotal;
   final double gstAmount;
+  final double oneTimeCharge; // 1-Time Fixed Charge for custom bottle/printing blocks
   final double finalAmount;
   final bool withGst;
   final String termsConditions;
@@ -62,6 +63,7 @@ class QuotationModel {
     required this.items,
     required this.subtotal,
     required this.gstAmount,
+    this.oneTimeCharge = 0.0,
     required this.finalAmount,
     required this.withGst,
     this.termsConditions = '',
@@ -110,6 +112,7 @@ class QuotationModel {
       items: itemsList,
       subtotal: (data['subtotal'] ?? 0.0).toDouble(),
       gstAmount: (data['gstAmount'] ?? 0.0).toDouble(),
+      oneTimeCharge: (data['oneTimeCharge'] ?? 0.0).toDouble(),
       finalAmount: (data['finalAmount'] ?? 0.0).toDouble(),
       withGst: data['withGst'] ?? true,
       termsConditions: data['termsConditions'] ?? '',
@@ -129,6 +132,7 @@ class QuotationModel {
       'items': items.map((item) => item.toMap()).toList(),
       'subtotal': subtotal,
       'gstAmount': gstAmount,
+      'oneTimeCharge': oneTimeCharge,
       'finalAmount': finalAmount,
       'withGst': withGst,
       'termsConditions': termsConditions,

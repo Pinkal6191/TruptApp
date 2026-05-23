@@ -23,6 +23,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
   final _contactPersonController = TextEditingController();
   final _mobileController = TextEditingController();
   final _addressController = TextEditingController();
+  final _oneTimeChargeController = TextEditingController();
   final _termsController = TextEditingController();
 
   DateTime _createdAt = DateTime.now();
@@ -51,6 +52,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
       _contactPersonController.text = q.contactPerson;
       _mobileController.text = q.customerMobile;
       _addressController.text = q.customerAddress;
+      _oneTimeChargeController.text = q.oneTimeCharge > 0 ? q.oneTimeCharge.toString() : '';
       _termsController.text = q.termsConditions;
       _createdAt = q.createdAt;
       _validUntil = q.validUntil;
@@ -99,6 +101,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     _contactPersonController.dispose();
     _mobileController.dispose();
     _addressController.dispose();
+    _oneTimeChargeController.dispose();
     _termsController.dispose();
     _itemNameController.dispose();
     _itemQtyController.dispose();
@@ -111,6 +114,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     for (var item in _cart) {
       total += item.quantity * item.pricePerUnit;
     }
+    final oneTime = double.tryParse(_oneTimeChargeController.text.trim()) ?? 0.0;
+    total += oneTime;
     if (_withGst) {
       return total / 1.05; // 5% inclusive GST
     }
@@ -122,6 +127,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     for (var item in _cart) {
       total += item.quantity * item.pricePerUnit;
     }
+    final oneTime = double.tryParse(_oneTimeChargeController.text.trim()) ?? 0.0;
+    total += oneTime;
     if (_withGst) {
       return total - _subtotal;
     }
@@ -133,6 +140,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
     for (var item in _cart) {
       total += item.quantity * item.pricePerUnit;
     }
+    final oneTime = double.tryParse(_oneTimeChargeController.text.trim()) ?? 0.0;
+    total += oneTime;
     return total;
   }
 
@@ -235,6 +244,8 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         qNumber = 'TE/Q/$year-$month/$formattedCount';
       }
 
+      final oneTimeVal = double.tryParse(_oneTimeChargeController.text.trim()) ?? 0.0;
+
       final quotation = QuotationModel(
         id: docId,
         quotationNumber: qNumber,
@@ -248,6 +259,7 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
         items: _cart,
         subtotal: _subtotal,
         gstAmount: _gstAmount,
+        oneTimeCharge: oneTimeVal,
         finalAmount: _finalAmount,
         withGst: _withGst,
         termsConditions: _termsController.text.trim(),
@@ -365,6 +377,20 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.location_on),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _oneTimeChargeController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: '1-Time Custom Bottle / Mold Fixed Charge (₹)',
+                          hintText: 'Optional setup costs e.g. 5000',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.monetization_on_outlined),
+                        ),
+                        onChanged: (val) {
+                          setState(() {}); // Recalculate totals dynamically!
+                        },
                       ),
                       const SizedBox(height: 16),
                       // Date selectors
