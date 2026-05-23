@@ -446,6 +446,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               ),
                             ),
                           ),
+                          const Spacer(),
+                          if (order.remainingAmount < 0)
+                            _adminAmountBadge('Return ₹${order.remainingAmount.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
+                          else if (order.remainingAmount > 0)
+                            _adminAmountBadge('Due ₹${order.remainingAmount.toStringAsFixed(0)}', Colors.red.shade700, Colors.red.shade50)
+                          else
+                            _adminAmountBadge('Fully Paid ✓', Colors.green.shade700, Colors.green.shade50),
                         ],
                       ),
                       const SizedBox(height: 12),
