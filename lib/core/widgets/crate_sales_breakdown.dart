@@ -30,30 +30,31 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
     int count200ml = 0;
     int count500ml = 0;
     int count1L = 0;
-    double totalCrateRevenue = 0.0;
+    double rev200ml = 0.0;
+    double rev500ml = 0.0;
+    double rev1L = 0.0;
 
     for (var order in filteredOrders) {
       for (var item in order.items) {
         final name = item.productName.toLowerCase();
-        bool matched = false;
         if (name.contains('200')) {
           count200ml += item.quantity;
-          matched = true;
+          rev200ml += item.pricePerCrate * item.quantity;
         } else if (name.contains('500')) {
           count500ml += item.quantity;
-          matched = true;
+          rev500ml += item.pricePerCrate * item.quantity;
         } else if (name.contains('1l') || name.contains('1 l') || name.contains('1ltr') || name.contains('1 ltr')) {
           count1L += item.quantity;
-          matched = true;
-        }
-        if (matched) {
-          totalCrateRevenue += item.pricePerCrate * item.quantity;
+          rev1L += item.pricePerCrate * item.quantity;
         }
       }
     }
 
     final totalCrates = count200ml + count500ml + count1L;
-    final avgCrateCost = totalCrates > 0 ? (totalCrateRevenue / totalCrates) : 0.0;
+    
+    final avgCost200ml = count200ml > 0 ? (rev200ml / count200ml) : 0.0;
+    final avgCost500ml = count500ml > 0 ? (rev500ml / count500ml) : 0.0;
+    final avgCost1L = count1L > 0 ? (rev1L / count1L) : 0.0;
 
     // Helper to calculate percentages
     double pct200 = totalCrates > 0 ? (count200ml / totalCrates) : 0.0;
@@ -145,7 +146,7 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
             ),
             const Divider(height: 30),
 
-            // Total Crate Sales & Average Cost Indicator
+            // Total Crate Sales Indicator
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
@@ -153,42 +154,20 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total Crates Sold:',
-                        style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                      ),
-                      Text(
-                        '$totalCrates Crates',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E3A8A),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Total Crates Sold:',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                   ),
-                  const Divider(height: 16, thickness: 1, color: Color(0xFFE2E8F0)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Avg. Price per Crate:',
-                        style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                      ),
-                      Text(
-                        '₹${avgCrateCost.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF10B981),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '$totalCrates Crates',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E3A8A),
+                    ),
                   ),
                 ],
               ),
@@ -196,11 +175,11 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
             const SizedBox(height: 20),
 
             // Crate Progress list
-            _buildProductRow('200ml', count200ml, pct200, const Color(0xFF3B82F6), topSeller == '200ml'),
+            _buildProductRow('200ml', count200ml, pct200, avgCost200ml, const Color(0xFF3B82F6), topSeller == '200ml'),
             const SizedBox(height: 16),
-            _buildProductRow('500ml', count500ml, pct500, const Color(0xFF10B981), topSeller == '500ml'),
+            _buildProductRow('500ml', count500ml, pct500, avgCost500ml, const Color(0xFF10B981), topSeller == '500ml'),
             const SizedBox(height: 16),
-            _buildProductRow('1L (1 Liter)', count1L, pct1L, const Color(0xFF8B5CF6), topSeller == '1L'),
+            _buildProductRow('1L (1 Liter)', count1L, pct1L, avgCost1L, const Color(0xFF8B5CF6), topSeller == '1L'),
 
             if (totalCrates > 0 && topSeller != 'None') ...[
               const Divider(height: 40),
@@ -247,7 +226,7 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
     );
   }
 
-  Widget _buildProductRow(String sizeName, int quantity, double percentage, Color color, bool isTopSeller) {
+  Widget _buildProductRow(String sizeName, int quantity, double percentage, double avgCost, Color color, bool isTopSeller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -315,6 +294,22 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Avg: ₹${avgCost.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
