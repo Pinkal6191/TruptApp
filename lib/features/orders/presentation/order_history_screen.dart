@@ -138,7 +138,22 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           if (state is OrderLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is OrdersLoaded) {
-            final sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            final authState = context.read<AuthBloc>().state;
+            final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
+            final String? currentUserId = authState is Authenticated ? authState.user.uid : null;
+            final String? currentUserName = authState is Authenticated ? authState.user.name : null;
+
+            var sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            
+            if (!isAdmin && currentUserId != null) {
+              sortedOrders = sortedOrders.where((o) => 
+                o.createdBy == currentUserId || 
+                o.referredPartnerId == currentUserId || 
+                o.targetUserId == currentUserId || 
+                o.partnerName == currentUserName
+              ).toList();
+            }
+
             if (sortedOrders.isEmpty) {
               return Center(
                 child: Column(
@@ -178,9 +193,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
               return true;
             }).toList();
-
-            final authState = context.read<AuthBloc>().state;
-            final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
 
             return Column(
               children: [
@@ -366,15 +378,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           ),
                         ],
                       ),
-                      if (order.creatorRole == 'admin') ...[
+                      if (order.referredPartnerId.isNotEmpty && order.creatorRole == 'admin') ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.info_outline, size: 12, color: Colors.blue.shade700),
+                            Icon(Icons.handshake_outlined, size: 12, color: Colors.indigo.shade600),
                             const SizedBox(width: 4),
                             Text(
-                              'Ref: ${order.orderReference}',
-                              style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600),
+                              '🤝 Referred by Admin',
+                              style: TextStyle(fontSize: 12, color: Colors.indigo.shade600, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),

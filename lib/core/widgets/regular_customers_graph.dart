@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import '../models/order_model.dart';
 
-class RegularCustomersGraph extends StatelessWidget {
+class RegularCustomersGraph extends StatefulWidget {
   final List<OrderModel> orders;
 
   const RegularCustomersGraph({super.key, required this.orders});
+
+  @override
+  State<RegularCustomersGraph> createState() => _RegularCustomersGraphState();
+}
+
+class _RegularCustomersGraphState extends State<RegularCustomersGraph> {
+  String _sortBy = 'Orders'; // 'Orders' or 'Amount'
 
   @override
   Widget build(BuildContext context) {
     // 1. Group orders by customer name / mobile number
     final Map<String, _CustomerStats> customerStatsMap = {};
 
-    for (var order in orders) {
+    for (var order in widget.orders) {
       final name = order.shopName.isNotEmpty ? order.shopName : order.partnerName;
       if (name.isEmpty) continue;
       final key = '${name}_${order.customerMobile}';
@@ -34,9 +41,13 @@ class RegularCustomersGraph extends StatelessWidget {
       }
     }
 
-    // 2. Convert to list and sort by order frequency descending
-    final List<_CustomerStats> sortedList = customerStatsMap.values.toList()
-      ..sort((a, b) => b.orderCount.compareTo(a.orderCount));
+    // 2. Convert to list and sort by selected criteria
+    final List<_CustomerStats> sortedList = customerStatsMap.values.toList();
+    if (_sortBy == 'Orders') {
+      sortedList.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+    } else {
+      sortedList.sort((a, b) => b.totalSpend.compareTo(a.totalSpend));
+    }
 
     // Take top 5 regular customers
     final List<_CustomerStats> top5 = sortedList.take(5).toList();
@@ -60,7 +71,9 @@ class RegularCustomersGraph extends StatelessWidget {
       );
     }
 
-    final int maxOrders = top5.first.orderCount;
+    final double maxVal = _sortBy == 'Orders' 
+        ? top5.first.orderCount.toDouble() 
+        : top5.first.totalSpend;
 
     return Card(
       elevation: 0,
@@ -74,18 +87,46 @@ class RegularCustomersGraph extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.stars, color: Color(0xFF1E3A8A)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Top Regular Customers (Loyalty)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                Row(
+                  children: [
+                    const Icon(Icons.stars, color: Color(0xFF1E3A8A)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Top Regular Customers',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const Text(
-              'Ranking of repeat customers by order frequency',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _sortBy == 'Orders' ? 'Ranking by order frequency' : 'Ranking by total spend',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+                // Toggle buttons
+                Container(
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildToggleButton('Orders'),
+                      _buildToggleButton('Amount'),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             ListView.builder(
@@ -94,7 +135,10 @@ class RegularCustomersGraph extends StatelessWidget {
               itemCount: top5.length,
               itemBuilder: (context, index) {
                 final customer = top5[index];
-                final double percent = maxOrders > 0 ? (customer.orderCount / maxOrders) : 0.0;
+                final double currentVal = _sortBy == 'Orders' 
+                    ? customer.orderCount.toDouble() 
+                    : customer.totalSpend;
+                final double percent = maxVal > 0 ? (currentVal / maxVal) : 0.0;
                 
                 // Color mapping for ranks
                 Color barColor = const Color(0xFF1E3A8A); // Gold/Dark Blue
@@ -137,7 +181,9 @@ class RegularCustomersGraph extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${customer.orderCount} Orders  (₹${customer.totalSpend.toStringAsFixed(0)})',
+                            _sortBy == 'Orders' 
+                              ? '${customer.orderCount} Orders  (₹${customer.totalSpend.toStringAsFixed(0)})'
+                              : '₹${customer.totalSpend.toStringAsFixed(0)}  (${customer.orderCount} Orders)',
                             style: TextStyle(
                               fontSize: 12, 
                               fontWeight: FontWeight.bold, 
@@ -162,6 +208,36 @@ class RegularCustomersGraph extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleButton(String type) {
+    final bool isSelected = _sortBy == type;
+    return GestureDetector(
+      onTap: () {
+        if (_sortBy != type) {
+          setState(() {
+            _sortBy = type;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1E3A8A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Center(
+          child: Text(
+            type,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.grey.shade600,
+            ),
+          ),
         ),
       ),
     );

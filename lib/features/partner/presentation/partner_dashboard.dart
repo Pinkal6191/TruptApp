@@ -30,10 +30,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
     super.initState();
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      context.read<OrderBloc>().add(WatchOrders(
-        userId: authState.user.uid,
-        userName: authState.user.name,
-      ));
+      context.read<OrderBloc>().add(WatchOrders());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       restoreSavedRoute(context);
@@ -80,22 +77,93 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                 // Summary Cards
                 BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
-                    double totalOrders = 0;
-                    double pendingPayment = 0;
+                    double truptTotalOrders = 0;
+                    double truptPendingPayment = 0;
+                    
+                    int count200ml = 0;
+                    int count500ml = 0;
+                    int count1L = 0;
+                    double rev200ml = 0.0;
+                    double rev500ml = 0.0;
+                    double rev1L = 0.0;
+
+                    double partnerTotalOrders = 0;
+                    double partnerPendingPayment = 0;
                     List<OrderModel> partnerOrders = [];
+
                     if (state is OrdersLoaded) {
-                      partnerOrders = state.orders;
-                      totalOrders = state.orders.fold(0, (sum, o) => sum + o.finalAmount);
-                      // Only sum positive remaining; negative means customer overpaid (change to return)
-                      pendingPayment = state.orders.fold(0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
+                      for (var o in state.orders) {
+                        // Global Company Stats
+                        truptTotalOrders += o.finalAmount;
+                        if (o.remainingAmount > 0) {
+                          truptPendingPayment += o.remainingAmount;
+                        }
+
+                        // Crate averages
+                        for (var item in o.items) {
+                          final name = item.productName.toLowerCase();
+                          if (name.contains('200')) {
+                            count200ml += item.quantity;
+                            rev200ml += item.pricePerCrate * item.quantity;
+                          } else if (name.contains('500')) {
+                            count500ml += item.quantity;
+                            rev500ml += item.pricePerCrate * item.quantity;
+                          } else if (name.contains('1l') || name.contains('1 l') || name.contains('1ltr') || name.contains('1 ltr')) {
+                            count1L += item.quantity;
+                            rev1L += item.pricePerCrate * item.quantity;
+                          }
+                        }
+
+                        // Partner's own stats
+                        if (o.createdBy == user.uid || o.referredPartnerId == user.uid || o.targetUserId == user.uid || o.partnerName == user.name) {
+                          partnerOrders.add(o);
+                          partnerTotalOrders += o.finalAmount;
+                          if (o.remainingAmount > 0) {
+                            partnerPendingPayment += o.remainingAmount;
+                          }
+                        }
+                      }
                     }
+
+                    double avg200ml = count200ml > 0 ? (rev200ml / count200ml) : 0.0;
+                    double avg500ml = count500ml > 0 ? (rev500ml / count500ml) : 0.0;
+                    double avg1L = count1L > 0 ? (rev1L / count1L) : 0.0;
+
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Text('Trupt Global (Transparency)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            _summaryCard('Total Orders', '₹${totalOrders.toStringAsFixed(0)}', Icons.shopping_bag, Colors.blue),
+                            _summaryCard('Trupt Total Sales', '₹${truptTotalOrders.toStringAsFixed(0)}', Icons.public, Colors.indigo),
                             const SizedBox(width: 16),
-                            _summaryCard('Pending', '₹${pendingPayment.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange),
+                            _summaryCard('Trupt Pending', '₹${truptPendingPayment.toStringAsFixed(0)}', Icons.account_balance, Colors.redAccent),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Trupt Average Price per Crate', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(child: _avgPriceCard('200ml', avg200ml, Colors.blue)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _avgPriceCard('500ml', avg500ml, Colors.green)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _avgPriceCard('1L', avg1L, Colors.purple)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 24),
+
+                        const Text('My Performance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _summaryCard('My Total Sales', '₹${partnerTotalOrders.toStringAsFixed(0)}', Icons.shopping_bag, Colors.blue),
+                            const SizedBox(width: 16),
+                            _summaryCard('My Pending', '₹${partnerPendingPayment.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange),
                           ],
                         ),
                         if (partnerOrders.isNotEmpty) ...[
@@ -158,10 +226,28 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
           children: [
             Icon(icon, color: color),
             const SizedBox(height: 12),
-            Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-            Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _avgPriceCard(String title, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 4),
+          Text('₹${value.toStringAsFixed(1)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color.withValues(alpha: 0.8))),
+        ],
       ),
     );
   }

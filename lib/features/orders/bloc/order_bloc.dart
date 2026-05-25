@@ -76,14 +76,15 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.createOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order created successfully!'));
-      // Admin sees all orders; partner/distributor sees only their own
-      if (event.order.creatorRole == 'admin') {
-        add(LoadOrders());
-      } else {
-        add(LoadOrders(
-          userId: event.order.createdBy,
-          userName: event.order.partnerName,
-        ));
+      if (_ordersSubscription == null) {
+        if (event.order.creatorRole == 'admin') {
+          add(LoadOrders());
+        } else {
+          add(LoadOrders(
+            userId: event.order.createdBy,
+            userName: event.order.partnerName,
+          ));
+        }
       }
     } catch (e) {
       emit(OrderError(message: e.toString()));
@@ -95,13 +96,15 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order updated successfully!'));
-      if (event.userId == null) {
-        add(LoadOrders());
-      } else {
-        add(LoadOrders(
-          userId: event.userId,
-          userName: event.userName,
-        ));
+      if (_ordersSubscription == null) {
+        if (event.userId == null) {
+          add(LoadOrders());
+        } else {
+          add(LoadOrders(
+            userId: event.userId,
+            userName: event.userName,
+          ));
+        }
       }
     } catch (e) {
       emit(OrderError(message: e.toString()));
@@ -113,7 +116,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrderStatus(event.orderId, event.statusType, event.newStatus);
       emit(OrderOperationSuccess(message: 'Order status updated!'));
-      add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      if (_ordersSubscription == null) {
+        add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      }
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
@@ -124,7 +129,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.updateOrderPayment(event.orderId, event.paidAmount, event.paymentStatus);
       emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
-      add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      if (_ordersSubscription == null) {
+        add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      }
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
@@ -135,7 +142,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     try {
       await _orderRepository.deleteOrder(event.order);
       emit(OrderOperationSuccess(message: 'Order deleted successfully!'));
-      add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      if (_ordersSubscription == null) {
+        add(LoadOrders(userId: event.userId, userName: event.userName)); 
+      }
     } catch (e) {
       emit(OrderError(message: e.toString()));
     }
