@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/models/order_item_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InvoiceService {
   static Future<void> generateAndShareInvoice(OrderModel order, {bool withGst = true}) async {
@@ -35,6 +36,25 @@ class InvoiceService {
     String invNo = order.invoiceNumber;
     if (invNo.isEmpty) {
       invNo = DateFormat('ddMMyyyyHHmmss').format(order.createdAt);
+    }
+
+    String customerGst = order.customerGstNumber;
+    if (customerGst.trim().isEmpty || customerGst.trim() == 'URP') {
+      try {
+        final query = await FirebaseFirestore.instance
+            .collection('customers')
+            .where('mobileNumber', isEqualTo: order.customerMobile)
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          final gst = query.docs.first.data()['gstNumber'] as String?;
+          if (gst != null && gst.trim().isNotEmpty) {
+            customerGst = gst.trim();
+          }
+        }
+      } catch (e) {
+        print("Failed to fetch customer GST: $e");
+      }
     }
 
     pdf.addPage(
@@ -83,8 +103,8 @@ class InvoiceService {
               if (order.customerAddress.isNotEmpty)
                 pw.Text('Address: ${order.customerAddress}', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.Text('Contact: ${order.customerMobile}', style: pw.TextStyle(font: font, fontSize: 10)),
-              if (order.customerGstNumber.isNotEmpty && order.customerGstNumber != 'URP')
-                pw.Text('GST No: ${order.customerGstNumber}', style: pw.TextStyle(font: font, fontSize: 10)),
+              if (customerGst.isNotEmpty && customerGst != 'URP')
+                pw.Text('GST No: $customerGst', style: pw.TextStyle(font: font, fontSize: 10)),
               pw.SizedBox(height: 24),
 
               // Items Table
@@ -134,7 +154,7 @@ class InvoiceService {
                       pw.SizedBox(height: 4),
                       pw.Text('Bank : AU Small Finance Bank', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.Text('A/c. No.2701202627012026', style: pw.TextStyle(font: font, fontSize: 10)),
-                      pw.Text('IFSC Code : AUBL0004101', style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('IFSC Code : AUBL0004102', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.Text('UPI ID : truptenterprise2644@aubank', style: pw.TextStyle(font: font, fontSize: 10)),
                       pw.SizedBox(height: 16),
                       pw.Text('Terms & Conditions:', style: pw.TextStyle(font: boldFont, fontSize: 12)),
