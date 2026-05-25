@@ -72,11 +72,12 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
   }
 
   Future<void> _onCreateOrder(CreateOrder event, Emitter<OrderState> emit) async {
-    emit(OrderLoading());
+    final isStreaming = _ordersSubscription != null;
+    if (!isStreaming) emit(OrderLoading());
     try {
       await _orderRepository.createOrder(event.order);
-      emit(OrderOperationSuccess(message: 'Order created successfully!'));
-      if (_ordersSubscription == null) {
+      if (!isStreaming) {
+        emit(OrderOperationSuccess(message: 'Order created successfully!'));
         if (event.order.creatorRole == 'admin') {
           add(LoadOrders());
         } else {
@@ -87,16 +88,17 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         }
       }
     } catch (e) {
-      emit(OrderError(message: e.toString()));
+      if (!isStreaming) emit(OrderError(message: e.toString()));
     }
   }
 
   Future<void> _onUpdateOrder(UpdateOrder event, Emitter<OrderState> emit) async {
-    emit(OrderLoading());
+    final isStreaming = _ordersSubscription != null;
+    if (!isStreaming) emit(OrderLoading());
     try {
       await _orderRepository.updateOrder(event.order);
-      emit(OrderOperationSuccess(message: 'Order updated successfully!'));
-      if (_ordersSubscription == null) {
+      if (!isStreaming) {
+        emit(OrderOperationSuccess(message: 'Order updated successfully!'));
         if (event.userId == null) {
           add(LoadOrders());
         } else {
@@ -107,46 +109,49 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         }
       }
     } catch (e) {
-      emit(OrderError(message: e.toString()));
+      if (!isStreaming) emit(OrderError(message: e.toString()));
     }
   }
 
   Future<void> _onUpdateOrderStatus(UpdateOrderStatus event, Emitter<OrderState> emit) async {
-    emit(OrderLoading());
+    final isStreaming = _ordersSubscription != null;
+    if (!isStreaming) emit(OrderLoading());
     try {
       await _orderRepository.updateOrderStatus(event.orderId, event.statusType, event.newStatus);
-      emit(OrderOperationSuccess(message: 'Order status updated!'));
-      if (_ordersSubscription == null) {
+      if (!isStreaming) {
+        emit(OrderOperationSuccess(message: 'Order status updated!'));
         add(LoadOrders(userId: event.userId, userName: event.userName)); 
       }
     } catch (e) {
-      emit(OrderError(message: e.toString()));
+      if (!isStreaming) emit(OrderError(message: e.toString()));
     }
   }
 
   Future<void> _onUpdateOrderPayment(UpdateOrderPayment event, Emitter<OrderState> emit) async {
-    emit(OrderLoading());
+    final isStreaming = _ordersSubscription != null;
+    if (!isStreaming) emit(OrderLoading());
     try {
       await _orderRepository.updateOrderPayment(event.orderId, event.paidAmount, event.paymentStatus);
-      emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
-      if (_ordersSubscription == null) {
+      if (!isStreaming) {
+        emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
         add(LoadOrders(userId: event.userId, userName: event.userName)); 
       }
     } catch (e) {
-      emit(OrderError(message: e.toString()));
+      if (!isStreaming) emit(OrderError(message: e.toString()));
     }
   }
 
   Future<void> _onDeleteOrder(DeleteOrder event, Emitter<OrderState> emit) async {
-    emit(OrderLoading());
+    final isStreaming = _ordersSubscription != null;
+    if (!isStreaming) emit(OrderLoading());
     try {
       await _orderRepository.deleteOrder(event.order);
-      emit(OrderOperationSuccess(message: 'Order deleted successfully!'));
-      if (_ordersSubscription == null) {
+      if (!isStreaming) {
+        emit(OrderOperationSuccess(message: 'Order deleted successfully!'));
         add(LoadOrders(userId: event.userId, userName: event.userName)); 
       }
     } catch (e) {
-      emit(OrderError(message: e.toString()));
+      if (!isStreaming) emit(OrderError(message: e.toString()));
     }
   }
 }
