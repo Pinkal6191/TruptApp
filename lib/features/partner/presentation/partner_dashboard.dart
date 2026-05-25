@@ -16,6 +16,7 @@ import '../../../core/utils/route_restorer.dart';
 import '../../../core/models/order_model.dart';
 import '../../../core/widgets/sales_trend_graph.dart';
 import '../../../core/widgets/crate_sales_breakdown.dart';
+import '../../../core/widgets/regular_customers_graph.dart';
 
 class PartnerDashboard extends StatefulWidget {
   const PartnerDashboard({super.key});
@@ -171,6 +172,8 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                           SalesTrendGraph(orders: partnerOrders),
                           const SizedBox(height: 16),
                           CrateSalesBreakdown(orders: partnerOrders),
+                          const SizedBox(height: 16),
+                          RegularCustomersGraph(orders: partnerOrders),
                         ],
                       ],
                     );
