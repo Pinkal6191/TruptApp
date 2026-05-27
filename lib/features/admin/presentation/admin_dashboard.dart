@@ -88,11 +88,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
           if (authState is! Authenticated) return const SizedBox();
           final user = authState.user;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<ProductBloc>().add(LoadProducts());
+              context.read<ExpenseBloc>().add(LoadExpenses());
+              context.read<OrderBloc>().add(WatchOrders());
+              await Future.delayed(const Duration(milliseconds: 800));
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Text(
                   'Welcome, ${user.name}',
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
@@ -245,8 +253,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   builder: (context, orderState) {
                     double totalCollected = 0.0;
                     double totalPending = 0.0;
+                    double totalSales = 0.0;
                     if (orderState is OrdersLoaded) {
                       for (var order in orderState.orders) {
+                        totalSales += order.finalAmount;
                         totalCollected += order.paidAmount;
                         // Only count positive remaining as pending; negative = overpaid (change to return)
                         if (order.remainingAmount > 0) {
@@ -260,33 +270,50 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         if (expenseState is ExpensesLoaded) {
                           totalExpense = expenseState.expenses.fold(0.0, (sum, item) => sum + item.amount);
                         }
-                        return Row(
+                        return Column(
                           children: [
-                            Expanded(
-                              child: _buildSummaryIndicatorCard(
-                                'Total Collected',
-                                '₹${totalCollected.toStringAsFixed(0)}',
-                                Icons.account_balance_wallet,
-                                const Color(0xFF10B981),
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildSummaryIndicatorCard(
+                                    'Total Sales',
+                                    '₹${totalSales.toStringAsFixed(0)}',
+                                    Icons.insights,
+                                    const Color(0xFF3B82F6),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildSummaryIndicatorCard(
+                                    'Total Collected',
+                                    '₹${totalCollected.toStringAsFixed(0)}',
+                                    Icons.account_balance_wallet,
+                                    const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildSummaryIndicatorCard(
-                                'Total Pending',
-                                '₹${totalPending.toStringAsFixed(0)}',
-                                Icons.pending_actions,
-                                const Color(0xFFF59E0B),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildSummaryIndicatorCard(
-                                'Total Expenses',
-                                '₹${totalExpense.toStringAsFixed(0)}',
-                                Icons.money_off,
-                                Colors.redAccent,
-                              ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildSummaryIndicatorCard(
+                                    'Total Pending',
+                                    '₹${totalPending.toStringAsFixed(0)}',
+                                    Icons.pending_actions,
+                                    const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildSummaryIndicatorCard(
+                                    'Total Expenses',
+                                    '₹${totalExpense.toStringAsFixed(0)}',
+                                    Icons.receipt_long,
+                                    const Color(0xFFEF4444),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         );
@@ -517,6 +544,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(height: 32),
               ],
             ),
+          ),
           );
         },
       ),

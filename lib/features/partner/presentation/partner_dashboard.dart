@@ -63,11 +63,17 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
               )
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          body: RefreshIndicator(
+            onRefresh: () async {
+              context.read<OrderBloc>().add(WatchOrders());
+              await Future.delayed(const Duration(milliseconds: 800));
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Text(
                   'Welcome, ${user.name}',
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
@@ -78,17 +84,18 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                 // Summary Cards
                 BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
-                    double truptTotalOrders = 0;
-                    double truptPendingPayment = 0;
-                    
                     int count200ml = 0;
                     int count500ml = 0;
                     int count1L = 0;
                     double rev200ml = 0.0;
                     double rev500ml = 0.0;
                     double rev1L = 0.0;
+                    double truptTotalOrders = 0;
+                    double truptCollected = 0;
+                    double truptPendingPayment = 0;
 
                     double partnerTotalOrders = 0;
+                    double partnerCollected = 0;
                     double partnerPendingPayment = 0;
                     List<OrderModel> partnerOrders = [];
 
@@ -96,6 +103,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                       for (var o in state.orders) {
                         // Global Company Stats
                         truptTotalOrders += o.finalAmount;
+                        truptCollected += o.paidAmount;
                         if (o.remainingAmount > 0) {
                           truptPendingPayment += o.remainingAmount;
                         }
@@ -119,6 +127,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                         if (o.createdBy == user.uid || o.referredPartnerId == user.uid || o.targetUserId == user.uid || o.partnerName == user.name) {
                           partnerOrders.add(o);
                           partnerTotalOrders += o.finalAmount;
+                          partnerCollected += o.paidAmount;
                           if (o.remainingAmount > 0) {
                             partnerPendingPayment += o.remainingAmount;
                           }
@@ -139,7 +148,15 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                           children: [
                             _summaryCard('Trupt Total Sales', '₹${truptTotalOrders.toStringAsFixed(0)}', Icons.public, Colors.indigo),
                             const SizedBox(width: 16),
+                            _summaryCard('Trupt Collected', '₹${truptCollected.toStringAsFixed(0)}', Icons.account_balance_wallet, const Color(0xFF10B981)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
                             _summaryCard('Trupt Pending', '₹${truptPendingPayment.toStringAsFixed(0)}', Icons.account_balance, Colors.redAccent),
+                            const SizedBox(width: 16),
+                            const Expanded(child: SizedBox()), // Empty space to balance the grid
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -164,7 +181,15 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                           children: [
                             _summaryCard('My Total Sales', '₹${partnerTotalOrders.toStringAsFixed(0)}', Icons.shopping_bag, Colors.blue),
                             const SizedBox(width: 16),
+                            _summaryCard('My Collected', '₹${partnerCollected.toStringAsFixed(0)}', Icons.account_balance_wallet, Colors.teal),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
                             _summaryCard('My Pending', '₹${partnerPendingPayment.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange),
+                            const SizedBox(width: 16),
+                            const Expanded(child: SizedBox()), // Empty space to balance the grid
                           ],
                         ),
                         if (partnerOrders.isNotEmpty) ...[
@@ -209,6 +234,7 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                 ),
               ],
             ),
+          ),
           ),
         );
       },

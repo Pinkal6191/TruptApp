@@ -30,14 +30,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     RouteTracker.saveRoute('order_history');
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      if (authState.user.role == 'admin') {
-        context.read<OrderBloc>().add(LoadOrders()); // Load all for admin
-      } else {
-        context.read<OrderBloc>().add(LoadOrders(
-          userId: authState.user.uid,
-          userName: authState.user.name,
-        ));
-      }
+      // Just ensure we are streaming all orders (Dashboard usually does this, but just in case)
+      context.read<OrderBloc>().add(WatchOrders());
     }
   }
 
@@ -340,11 +334,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: paginated.length,
-            itemBuilder: (context, index) {
-              final order = paginated[index];
+          child: RefreshIndicator(
+            onRefresh: () async {
+              context.read<OrderBloc>().add(WatchOrders());
+              await Future.delayed(const Duration(milliseconds: 800));
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: paginated.length,
+              itemBuilder: (context, index) {
+                final order = paginated[index];
               return InkWell(
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)))
@@ -575,11 +575,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ],
                   ),
                 ),
-                ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
+      ),
+    ),
         _buildPaginationControls(totalPages),
       ],
     );
@@ -673,11 +674,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             ),
           ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: paginatedKeys.length,
-            itemBuilder: (context, index) {
-              final creatorName = paginatedKeys[index];
+          child: RefreshIndicator(
+            onRefresh: () async {
+              context.read<OrderBloc>().add(WatchOrders());
+              await Future.delayed(const Duration(milliseconds: 800));
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: paginatedKeys.length,
+              itemBuilder: (context, index) {
+                final creatorName = paginatedKeys[index];
               final creatorOrders = grouped[creatorName]!;
               final totalAmount = creatorOrders.fold(0.0, (sum, o) => sum + o.finalAmount);
               final totalPending = creatorOrders.fold(0.0, (sum, o) => sum + (o.remainingAmount > 0 ? o.remainingAmount : 0.0));
@@ -799,6 +806,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             },
           ),
         ),
+      ),
         _buildPaginationControls(totalPages),
       ],
     );
