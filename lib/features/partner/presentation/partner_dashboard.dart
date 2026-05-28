@@ -5,6 +5,7 @@ import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../orders/presentation/create_order_screen.dart';
 import '../../orders/presentation/order_history_screen.dart';
+import '../../admin/presentation/private_label_customers_screen.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../orders/bloc/order_bloc.dart';
@@ -231,6 +232,14 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   icon: Icons.history,
                   color: const Color(0xFF64748B),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())).then((_) => RouteTracker.clearRoute()),
+                ),
+                const SizedBox(height: 12),
+                _actionCard(
+                  title: 'Private Label Customers',
+                  subtitle: 'View custom label clients',
+                  icon: Icons.storefront,
+                  color: Colors.pink,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivateLabelCustomersScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
               ],
             ),

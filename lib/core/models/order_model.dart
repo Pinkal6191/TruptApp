@@ -14,6 +14,7 @@ class OrderModel {
   final String creatorRole; // 'admin', 'partner', 'distributor'
   final bool isInclusiveGST;
   final bool isSupplyOrder; // True if Admin is supplying to Distributor
+  final String orderType; // 'standard' or 'private_label'
   final List<OrderItemModel> items;
   final double subtotal;
   final double gstAmount; // E.g. 18%
@@ -41,6 +42,7 @@ class OrderModel {
     required this.creatorRole,
     this.isInclusiveGST = true,
     this.isSupplyOrder = false,
+    this.orderType = 'standard',
     required this.items,
     required this.subtotal,
     required this.gstAmount,
@@ -69,6 +71,7 @@ class OrderModel {
       'creatorRole': creatorRole,
       'isInclusiveGST': isInclusiveGST,
       'isSupplyOrder': isSupplyOrder,
+      'orderType': orderType,
       'items': items.map((x) => x.toMap()).toList(),
       'subtotal': subtotal,
       'gstAmount': gstAmount,
@@ -102,6 +105,7 @@ class OrderModel {
       creatorRole: map['creatorRole'] ?? 'partner',
       isInclusiveGST: map['isInclusiveGST'] ?? true,
       isSupplyOrder: map['isSupplyOrder'] ?? false,
+      orderType: map['orderType'] ?? 'standard',
       items: List<OrderItemModel>.from(
         (map['items'] ?? []).map((x) => OrderItemModel.fromMap(x)),
       ),

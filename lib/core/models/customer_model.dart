@@ -7,6 +7,7 @@ class CustomerModel {
   final String partnerId; // ID of the partner who created/owns this customer
   final int totalOrders;
   final double totalAmountSpent;
+  final bool isPrivateLabel;
   final DateTime createdAt;
 
   CustomerModel({
@@ -18,6 +19,7 @@ class CustomerModel {
     required this.partnerId,
     this.totalOrders = 0,
     this.totalAmountSpent = 0.0,
+    this.isPrivateLabel = false,
     required this.createdAt,
   });
 
@@ -31,6 +33,7 @@ class CustomerModel {
       'partnerId': partnerId,
       'totalOrders': totalOrders,
       'totalAmountSpent': totalAmountSpent,
+      'isPrivateLabel': isPrivateLabel,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -45,6 +48,7 @@ class CustomerModel {
       partnerId: map['partnerId'] ?? '',
       totalOrders: map['totalOrders'] ?? 0,
       totalAmountSpent: (map['totalAmountSpent'] ?? 0).toDouble(),
+      isPrivateLabel: map['isPrivateLabel'] ?? false,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
     );
   }

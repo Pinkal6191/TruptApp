@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +26,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadRememberedUser();
+    if (kDebugMode) {
+      _emailController.text = 'truptenterprise26@gmail.com';
+      _passwordController.text = 'admin@123';
+    }
   }
 
   Future<void> _loadRememberedUser() async {

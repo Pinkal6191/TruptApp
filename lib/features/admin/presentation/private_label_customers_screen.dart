@@ -7,16 +7,19 @@ import '../../../core/models/customer_model.dart';
 import '../../../core/utils/route_tracker.dart';
 import '../../customers/bloc/customer_bloc.dart';
 import '../../customers/bloc/customer_event.dart';
+import '../../customers/bloc/customer_event.dart';
 import '../../customers/bloc/customer_state.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 
-class CustomerListScreen extends StatefulWidget {
-  const CustomerListScreen({super.key});
+class PrivateLabelCustomersScreen extends StatefulWidget {
+  const PrivateLabelCustomersScreen({super.key});
 
   @override
-  State<CustomerListScreen> createState() => _CustomerListScreenState();
+  State<PrivateLabelCustomersScreen> createState() => _PrivateLabelCustomersScreenState();
 }
 
-class _CustomerListScreenState extends State<CustomerListScreen> {
+class _PrivateLabelCustomersScreenState extends State<PrivateLabelCustomersScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _filterType = 'All'; // 'All', 'Repeated'
@@ -26,7 +29,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   @override
   void initState() {
     super.initState();
-    RouteTracker.saveRoute('customer_list');
+    RouteTracker.saveRoute('private_label_customer_list');
     context.read<CustomerBloc>().add(LoadCustomers());
   }
 
@@ -87,7 +90,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             Icon(isEdit ? Icons.edit : Icons.person_add,
                 color: const Color(0xFF1E3A8A)),
             const SizedBox(width: 8),
-            Text(isEdit ? 'Edit Customer' : 'Add Customer',
+            Text(isEdit ? 'Edit Customer' : 'Add Custom Label Customer',
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -172,6 +175,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   partnerId:        'admin',
                   totalOrders:      0,
                   totalAmountSpent: 0.0,
+                  isPrivateLabel:   true,
                   createdAt:        DateTime.now(),
                 );
                 context.read<CustomerBloc>().add(AddCustomer(newCustomer));
@@ -275,11 +279,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<CustomerBloc, CustomerState>(
       builder: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        final isAdmin = authState is Authenticated && authState.user.role == 'admin';
+        
         if (state is CustomerLoading) {
           return Scaffold(
             backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
-              title: const Text('Customer Directory'),
+              title: const Text('Private Label Customers'),
               elevation: 0,
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1E3A8A),
@@ -289,7 +296,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         } else if (state is CustomersLoaded) {
           final query = _searchQuery.toLowerCase().trim();
           var filteredCustomers = state.customers.where((c) {
-            if (c.isPrivateLabel) return false;
+            if (!c.isPrivateLabel) return false;
             if (query.isEmpty) return true;
             return c.shopName.toLowerCase().contains(query) ||
                 c.mobileNumber.toLowerCase().contains(query) ||
@@ -315,7 +322,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           return Scaffold(
             backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
-              title: const Text('Customer Directory'),
+              title: const Text('Private Label Customers'),
               elevation: 0,
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1E3A8A),
@@ -329,14 +336,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               ],
             ),
             floatingActionButtonLocation: _AboveBottomBarFabLocation(hasBottomBar: hasBottomBar),
-            floatingActionButton: FloatingActionButton.extended(
+            floatingActionButton: isAdmin ? FloatingActionButton.extended(
               onPressed: () => _showCustomerDialog(),
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
               icon: const Icon(Icons.person_add),
               label: const Text('Add Customer'),
               elevation: 4,
-            ),
+            ) : null,
             body: Column(
               children: [
                 // Search bar
@@ -477,6 +484,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                             final customer = paginatedCustomers[index];
                             return _CustomerCard(
                               customer: customer,
+                              isAdmin: isAdmin,
                               onEdit: () => _showCustomerDialog(existing: customer),
                               onDelete: () => _confirmDelete(customer),
                             );
@@ -525,7 +533,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           return Scaffold(
             backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
-              title: const Text('Customer Directory'),
+              title: const Text('Private Label Customers'),
               elevation: 0,
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1E3A8A),
@@ -541,7 +549,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           appBar: AppBar(
-            title: const Text('Customer Directory'),
+            title: const Text('Private Label Customers'),
             elevation: 0,
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF1E3A8A),
@@ -556,11 +564,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 // ── Customer Card widget ────────────────────────────────────────────────────
 class _CustomerCard extends StatelessWidget {
   final CustomerModel customer;
+  final bool isAdmin;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CustomerCard({
     required this.customer,
+    required this.isAdmin,
     required this.onEdit,
     required this.onDelete,
   });
@@ -627,28 +637,29 @@ class _CustomerCard extends StatelessWidget {
               ),
             ),
 
-            // Action buttons
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined,
-                      color: Color(0xFF1E3A8A), size: 20),
-                  tooltip: 'Edit Customer',
-                  onPressed: onEdit,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(height: 8),
-                IconButton(
-                  icon: Icon(Icons.delete_outline,
-                      color: Colors.red.shade400, size: 20),
-                  tooltip: 'Delete Customer',
-                  onPressed: onDelete,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
+            // Action buttons (Admin only)
+            if (isAdmin)
+              Column(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined,
+                        color: Color(0xFF1E3A8A), size: 20),
+                    tooltip: 'Edit Customer',
+                    onPressed: onEdit,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(height: 8),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline,
+                        color: Colors.red.shade400, size: 20),
+                    tooltip: 'Delete Customer',
+                    onPressed: onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

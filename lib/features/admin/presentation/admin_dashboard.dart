@@ -37,6 +37,9 @@ import '../../../core/models/order_model.dart';
 import '../../customers/bloc/customer_bloc.dart';
 import '../../customers/bloc/customer_event.dart';
 import '../../quotations/presentation/quotation_list_screen.dart';
+import 'private_label_customers_screen.dart';
+import 'private_label_orders_screen.dart';
+import 'contract_generator_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -440,6 +443,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 
+                const SizedBox(height: 24),
+                const Text(
+                  'Private Label Management',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Custom Customers',
+                        'Manage Private Label clients',
+                        Icons.storefront,
+                        Colors.pink,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivateLabelCustomersScreen())).then((_) => RouteTracker.clearRoute()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Custom Orders',
+                        'View custom bottle orders',
+                        Icons.local_shipping,
+                        Colors.deepPurple,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivateLabelOrdersScreen())).then((_) => RouteTracker.clearRoute()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Generate Contract',
+                        'Draft formal agreements',
+                        Icons.document_scanner,
+                        Colors.blueGrey,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContractGeneratorScreen())).then((_) => RouteTracker.clearRoute()),
+                      ),
+                    ),
+                  ],
+                ),
+
                 const SizedBox(height: 24),
                 const Text(
                   'Sales Analytics',
