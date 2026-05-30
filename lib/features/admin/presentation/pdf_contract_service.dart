@@ -7,11 +7,16 @@ import '../../../core/models/customer_model.dart';
 
 class PdfContractService {
   static Future<void> generateAndDownloadContract({
-    required CustomerModel customer,
+    required String customerName,
+    required String customerAddress,
+    required String customerContact,
     required double oneTimeFees,
     double? price200ml,
+    int? moq200ml,
     double? price500ml,
+    int? moq500ml,
     double? price1L,
+    int? moq1L,
     required String duration,
   }) async {
     final pdf = pw.Document();
@@ -137,10 +142,10 @@ class PdfContractService {
                       children: [
                         pw.Text('PARTY B (Client)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
                         pw.SizedBox(height: 8),
-                        pw.Text(customer.shopName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                        pw.Text(customerName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 4),
-                        pw.Text('Address: ${customer.address}', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.Text('Contact: ${customer.mobileNumber}', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Address: $customerAddress', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Contact: $customerContact', style: pw.TextStyle(fontSize: 10, color: textGrey)),
                       ],
                     ),
                   ),
@@ -174,8 +179,12 @@ class PdfContractService {
             pw.SizedBox(height: 6),
             _buildBulletPoint('Exclusivity: ', 'Party B agrees to exclusively purchase custom-labeled water from Party A for the duration of this agreement.', textDark),
             _buildBulletPoint('Label Design: ', 'Party B is responsible for providing the label design or approving the design provided by Party A. Once approved, the One-Time Setup Fee covers initial printing. Please note that the One-Time Setup & Label Printing Fee is strictly non-refundable.', textDark),
-            _buildBulletPoint('Minimum Order Quantity (MOQ): ', 'Each delivery requires a minimum order of [Insert MOQ] crates to qualify for the prices listed above.', textDark),
-            _buildBulletPoint('Payment Terms: ', 'Payments must be made within [Insert Days] days of delivery.', textDark),
+            _buildBulletPoint('Minimum Order Quantity (MOQ): ', 'Each delivery requires a minimum order of:\n'
+                '${moq200ml != null ? '• $moq200ml crates of 200ml bottles\n' : ''}'
+                '${moq500ml != null ? '• $moq500ml crates of 500ml bottles\n' : ''}'
+                '${moq1L != null ? '• $moq1L crates of 1L bottles\n' : ''}'
+                'to qualify for the prices listed above.', textDark),
+            _buildBulletPoint('Payment Terms: ', 'Payments must be made within 15 days of delivery.', textDark),
             _buildBulletPoint('Termination: ', 'Either party may terminate this agreement with a 30-day written notice.', textDark),
             pw.SizedBox(height: 12),
 
@@ -206,7 +215,7 @@ class PdfContractService {
                       children: [
                         pw.Container(width: 180, height: 1, color: PdfColors.grey600),
                         pw.SizedBox(height: 8),
-                        pw.Text('For ${customer.shopName}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
+                        pw.Text('For $customerName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
                         pw.SizedBox(height: 2),
                         pw.Text('Authorized Signatory', style: pw.TextStyle(fontSize: 10, color: textGrey)),
                         pw.SizedBox(height: 2),
@@ -225,7 +234,7 @@ class PdfContractService {
     // Save and print/download
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Contract_${customer.shopName.replaceAll(' ', '_')}.pdf',
+      name: 'Contract_${customerName.replaceAll(' ', '_')}.pdf',
     );
   }
 

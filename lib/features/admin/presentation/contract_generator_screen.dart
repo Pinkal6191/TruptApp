@@ -7,8 +7,13 @@ import '../../../core/models/customer_model.dart';
 import '../../../core/utils/route_tracker.dart';
 import 'pdf_contract_service.dart';
 
+import '../../../core/models/contract_model.dart';
+import '../../contracts/bloc/contract_bloc.dart';
+import '../../contracts/bloc/contract_event.dart';
+
 class ContractGeneratorScreen extends StatefulWidget {
-  const ContractGeneratorScreen({super.key});
+  final ContractModel? contractToEdit;
+  const ContractGeneratorScreen({super.key, this.contractToEdit});
 
   @override
   State<ContractGeneratorScreen> createState() => _ContractGeneratorScreenState();
@@ -20,6 +25,9 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
   final TextEditingController _price200mlController = TextEditingController(text: '70');
   final TextEditingController _price500mlController = TextEditingController(text: '80');
   final TextEditingController _price1LController = TextEditingController(text: '90');
+  final TextEditingController _moq200mlController = TextEditingController(text: '100');
+  final TextEditingController _moq500mlController = TextEditingController(text: '100');
+  final TextEditingController _moq1LController = TextEditingController(text: '100');
   final TextEditingController _contractDurationController = TextEditingController(text: '12 Months');
 
   bool _include200ml = true;
@@ -36,6 +44,25 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
     if (customerState is CustomerInitial || customerState is CustomerError || (customerState is CustomersLoaded && customerState.customers.isEmpty)) {
       context.read<CustomerBloc>().add(LoadCustomers());
     }
+
+    if (widget.contractToEdit != null) {
+      final c = widget.contractToEdit!;
+      _selectedCustomerId = c.customerId;
+      _oneTimeFeesController.text = c.oneTimeFees.toString();
+      _contractDurationController.text = c.duration;
+
+      _include200ml = c.price200ml != null;
+      if (c.price200ml != null) _price200mlController.text = c.price200ml.toString();
+      if (c.moq200ml != null) _moq200mlController.text = c.moq200ml.toString();
+
+      _include500ml = c.price500ml != null;
+      if (c.price500ml != null) _price500mlController.text = c.price500ml.toString();
+      if (c.moq500ml != null) _moq500mlController.text = c.moq500ml.toString();
+
+      _include1L = c.price1L != null;
+      if (c.price1L != null) _price1LController.text = c.price1L.toString();
+      if (c.moq1L != null) _moq1LController.text = c.moq1L.toString();
+    }
   }
 
   @override
@@ -44,6 +71,9 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
     _price200mlController.dispose();
     _price500mlController.dispose();
     _price1LController.dispose();
+    _moq200mlController.dispose();
+    _moq500mlController.dispose();
+    _moq1LController.dispose();
     _contractDurationController.dispose();
     super.dispose();
   }
@@ -63,14 +93,45 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
       final p200 = double.tryParse(_price200mlController.text) ?? 0.0;
       final p500 = double.tryParse(_price500mlController.text) ?? 0.0;
       final p1 = double.tryParse(_price1LController.text) ?? 0.0;
+      final m200 = int.tryParse(_moq200mlController.text) ?? 100;
+      final m500 = int.tryParse(_moq500mlController.text) ?? 100;
+      final m1 = int.tryParse(_moq1LController.text) ?? 100;
 
-      await PdfContractService.generateAndDownloadContract(
-        customer: selectedCustomer,
+      final contract = ContractModel(
+        id: widget.contractToEdit?.id ?? '',
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.shopName,
+        customerAddress: selectedCustomer.address,
+        customerContact: selectedCustomer.mobileNumber,
+        createdAt: widget.contractToEdit?.createdAt ?? DateTime.now(),
         oneTimeFees: fees,
         price200ml: _include200ml ? p200 : null,
+        moq200ml: _include200ml ? m200 : null,
         price500ml: _include500ml ? p500 : null,
+        moq500ml: _include500ml ? m500 : null,
         price1L: _include1L ? p1 : null,
+        moq1L: _include1L ? m1 : null,
         duration: _contractDurationController.text,
+      );
+
+      if (widget.contractToEdit == null) {
+        context.read<ContractBloc>().add(AddContract(contract));
+      } else {
+        context.read<ContractBloc>().add(UpdateContract(contract));
+      }
+
+      await PdfContractService.generateAndDownloadContract(
+        customerName: contract.customerName,
+        customerAddress: selectedCustomer.address,
+        customerContact: selectedCustomer.mobileNumber,
+        oneTimeFees: contract.oneTimeFees,
+        price200ml: contract.price200ml,
+        moq200ml: contract.moq200ml,
+        price500ml: contract.price500ml,
+        moq500ml: contract.moq500ml,
+        price1L: contract.price1L,
+        moq1L: contract.moq1L,
+        duration: contract.duration,
       );
 
       if (mounted) {
@@ -166,6 +227,7 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
                           _include200ml,
                           (val) => setState(() => _include200ml = val!),
                           _price200mlController,
+                          _moq200mlController,
                         ),
                         const SizedBox(height: 8),
                         _buildBottleOption(
@@ -173,6 +235,7 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
                           _include500ml,
                           (val) => setState(() => _include500ml = val!),
                           _price500mlController,
+                          _moq500mlController,
                         ),
                         const SizedBox(height: 8),
                         _buildBottleOption(
@@ -180,6 +243,7 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
                           _include1L,
                           (val) => setState(() => _include1L = val!),
                           _price1LController,
+                          _moq1LController,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -213,7 +277,7 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
                           )
                         : const Icon(Icons.picture_as_pdf),
                     label: Text(
-                      _isGenerating ? 'Generating...' : 'Generate & Download Contract',
+                      _isGenerating ? 'Saving & Generating...' : 'Save & Download Contract',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -226,16 +290,17 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
     );
   }
 
-  Widget _buildBottleOption(String title, bool isSelected, ValueChanged<bool?> onChanged, TextEditingController controller) {
+  Widget _buildBottleOption(String title, bool isSelected, ValueChanged<bool?> onChanged, TextEditingController priceController, TextEditingController moqController) {
     return Row(
       children: [
         Checkbox(value: isSelected, onChanged: onChanged),
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(width: 16),
-        if (isSelected)
+        Expanded(flex: 2, child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
+        if (isSelected) ...[
+          const SizedBox(width: 8),
           Expanded(
+            flex: 2,
             child: TextFormField(
-              controller: controller,
+              controller: priceController,
               decoration: InputDecoration(
                 labelText: 'Price (₹)',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -244,6 +309,20 @@ class _ContractGeneratorScreenState extends State<ContractGeneratorScreen> {
               keyboardType: TextInputType.number,
             ),
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: moqController,
+              decoration: InputDecoration(
+                labelText: 'MOQ (Crates)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+        ],
       ],
     );
   }
