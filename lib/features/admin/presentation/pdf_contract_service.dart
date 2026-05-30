@@ -65,6 +65,14 @@ class PdfContractService {
                           color: PdfColors.white,
                         ),
                       ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Email: truptenterprise26@gmail.com | Website: truptenterprise.com',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey300,
+                        ),
+                      ),
                     ],
                   ),
                   pw.Container(
@@ -121,9 +129,7 @@ class PdfContractService {
                         pw.Text('TRUPT ENTERPRISE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 2),
                         pw.Text('Address: 4160, B/H Mahalaxmi Cold Storage, Boriavi, Anand - 387310', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.Text('Phone: +91 96624 98664, +91 98793 95727', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.Text('Email: truptenterprise26@gmail.com', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.Text('Website: truptenterprise.com', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Phone: +91 96624 98664', style: pw.TextStyle(fontSize: 10, color: textGrey)),
                         pw.Text('GSTIN: 24AAZFT5241K1ZK', style: pw.TextStyle(fontSize: 10, color: textGrey)),
                       ],
                     ),
