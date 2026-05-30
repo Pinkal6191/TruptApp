@@ -23,7 +23,17 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   void _showAddExpenseModal() {
-    String type = 'Transport';
+    final state = context.read<ExpenseBloc>().state;
+    Set<String> uniqueTypes = {'Transport charge for delivery', 'Transport charge for material buy or delivered', 'Labor', 'Other'};
+    if (state is ExpensesLoaded) {
+      for (var exp in state.expenses) {
+        uniqueTypes.add(exp.type);
+      }
+    }
+    List<String> dropDownItems = uniqueTypes.toList();
+
+    String type = dropDownItems.first;
+    String customType = '';
     double amount = 0.0;
     String description = '';
     DateTime selectedDate = DateTime.now();
@@ -49,9 +59,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const Text('Add New Expense', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: type,
+                    value: dropDownItems.contains(type) ? type : dropDownItems.first,
                     decoration: const InputDecoration(labelText: 'Expense Type', border: OutlineInputBorder()),
-                    items: ['Transport', 'Labor', 'Other'].map((String val) {
+                    isExpanded: true,
+                    items: dropDownItems.map((String val) {
                       return DropdownMenuItem(value: val, child: Text(val));
                     }).toList(),
                     onChanged: (val) {
@@ -60,6 +71,15 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       }
                     },
                   ),
+                  if (type == 'Other') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'Enter Custom Type', border: OutlineInputBorder()),
+                      onChanged: (val) {
+                        customType = val;
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   TextFormField(
                     keyboardType: TextInputType.number,
@@ -125,9 +145,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       ),
                       onPressed: () {
                         if (amount > 0) {
+                          String finalType = type == 'Other' ? (customType.isNotEmpty ? customType : 'Other') : type;
                           final expense = ExpenseModel(
                             id: '',
-                            type: type,
+                            type: finalType,
                             amount: amount,
                             date: selectedDate,
                             description: description,
@@ -150,7 +171,18 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
   }
 
   void _showEditExpenseModal(ExpenseModel expense) {
-    String type = expense.type;
+    final state = context.read<ExpenseBloc>().state;
+    Set<String> uniqueTypes = {'Transport charge for delivery', 'Transport charge for material buy or delivered', 'Labor', 'Other'};
+    if (state is ExpensesLoaded) {
+      for (var exp in state.expenses) {
+        uniqueTypes.add(exp.type);
+      }
+    }
+    uniqueTypes.add(expense.type);
+    List<String> dropDownItems = uniqueTypes.toList();
+
+    String type = dropDownItems.contains(expense.type) ? expense.type : 'Other';
+    String customType = '';
     double amount = expense.amount;
     String description = expense.description;
     DateTime selectedDate = expense.date;
@@ -176,9 +208,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                   const Text('Edit Expense', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: type,
+                    value: dropDownItems.contains(type) ? type : dropDownItems.first,
                     decoration: const InputDecoration(labelText: 'Expense Type', border: OutlineInputBorder()),
-                    items: ['Transport', 'Labor', 'Other'].map((String val) {
+                    isExpanded: true,
+                    items: dropDownItems.map((String val) {
                       return DropdownMenuItem(value: val, child: Text(val));
                     }).toList(),
                     onChanged: (val) {
@@ -187,6 +220,15 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       }
                     },
                   ),
+                  if (type == 'Other') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'Enter Custom Type', border: OutlineInputBorder()),
+                      onChanged: (val) {
+                        customType = val;
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   TextFormField(
                     initialValue: amount.toString(),
@@ -254,9 +296,10 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                       ),
                       onPressed: () {
                         if (amount > 0) {
+                          String finalType = type == 'Other' ? (customType.isNotEmpty ? customType : 'Other') : type;
                           final updatedExpense = ExpenseModel(
                             id: expense.id,
-                            type: type,
+                            type: finalType,
                             amount: amount,
                             date: selectedDate,
                             description: description,
