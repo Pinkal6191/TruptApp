@@ -526,7 +526,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivateLabelOrdersScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
                     Expanded(
                       child: _buildActionCard(
                         context,
@@ -537,11 +541,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContractGeneratorScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _buildActionCard(
                         context,
@@ -552,8 +552,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         () => Navigator.push(context, MaterialPageRoute(builder: (_) => ContractsListScreen())).then((_) => RouteTracker.clearRoute()),
                       ),
                     ),
-                    const Spacer(),
-                    const Spacer(),
                   ],
                 ),
 
