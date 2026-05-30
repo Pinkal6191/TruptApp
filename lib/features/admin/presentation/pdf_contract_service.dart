@@ -192,7 +192,7 @@ class PdfContractService {
                 '${moq1L != null ? '  - $moq1L crates of 1L bottles\n' : ''}'
                 'to qualify for the prices listed above.', textDark),
             _buildBulletPoint('Payment Terms: ', 'Payments must be made within 15 days of delivery.', textDark),
-            _buildBulletPoint('Termination: ', 'Either party may terminate this agreement with a 30-day written notice.', textDark),
+            _buildBulletPoint('Termination: ', 'Either party may terminate this agreement with a 30-day written notice. If $customerName terminates this agreement without the required 30-day notice, $customerName shall be fully liable to reimburse TRUPT ENTERPRISE for the cost of all unused custom labels in stock and any pending production costs already incurred.', textDark),
             pw.SizedBox(height: 12),
 
             // Wrap the closing and signature in a Column so it tries to stay together
