@@ -23,77 +23,82 @@ class PdfContractService {
 
     final dateStr = DateFormat('dd MMMM yyyy').format(DateTime.now());
 
+    final primaryColor = PdfColor.fromHex('#1E3A8A');
+    final accentColor = PdfColor.fromHex('#3B82F6');
+    final lightBgColor = PdfColor.fromHex('#F8FAFC');
+    final textDark = PdfColor.fromHex('#1E293B');
+    final textGrey = PdfColor.fromHex('#64748B');
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(20),
-        build: (pw.Context context) {
-          final primaryColor = PdfColor.fromHex('#1E3A8A');
-          final accentColor = PdfColor.fromHex('#3B82F6');
-          final lightBgColor = PdfColor.fromHex('#F8FAFC');
-          final textDark = PdfColor.fromHex('#1E293B');
-          final textGrey = PdfColor.fromHex('#64748B');
-
-          return [
-            // Top Banner
-            pw.Container(
-              padding: const pw.EdgeInsets.all(20),
-              decoration: pw.BoxDecoration(
-                color: primaryColor,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'TRUPT ENTERPRISE',
+        header: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Container(
+                padding: const pw.EdgeInsets.all(20),
+                decoration: pw.BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'TRUPT ENTERPRISE',
+                          style: pw.TextStyle(
+                            fontSize: 24,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Premium Packaged Drinking Water',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Email: truptenterprise26@gmail.com | Website: truptenterprise.com',
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey300,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColors.white,
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Text(
+                        'PRIVATE LABEL AGREEMENT',
                         style: pw.TextStyle(
-                          fontSize: 24,
+                          fontSize: 12,
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.white,
+                          color: primaryColor,
                         ),
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Premium Packaged Drinking Water',
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.white,
-                        ),
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Email: truptenterprise26@gmail.com | Website: truptenterprise.com',
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          color: PdfColors.grey300,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColors.white,
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Text(
-                      'PRIVATE LABEL AGREEMENT',
-                      style: pw.TextStyle(
-                        fontSize: 12,
-                        fontWeight: pw.FontWeight.bold,
-                        color: primaryColor,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            pw.SizedBox(height: 16),
+              pw.SizedBox(height: 16),
+            ]
+          );
+        },
+        build: (pw.Context context) {
+          return [
 
             // Date & Intro
             pw.Row(
