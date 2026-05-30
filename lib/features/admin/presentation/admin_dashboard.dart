@@ -450,6 +450,59 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
+                BlocBuilder<OrderBloc, OrderState>(
+                  builder: (context, orderState) {
+                    double plSales = 0.0;
+                    double plCollected = 0.0;
+                    double plPending = 0.0;
+                    if (orderState is OrdersLoaded) {
+                      for (var order in orderState.orders) {
+                        if (order.orderType == 'private_label') {
+                          plSales += order.finalAmount;
+                          plCollected += order.paidAmount;
+                          if (order.remainingAmount > 0) {
+                            plPending += order.remainingAmount;
+                          }
+                        }
+                      }
+                    }
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'PL Sales',
+                                '₹${plSales.toStringAsFixed(0)}',
+                                Icons.insights,
+                                const Color(0xFF3B82F6),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'PL Collected',
+                                '₹${plCollected.toStringAsFixed(0)}',
+                                Icons.account_balance_wallet,
+                                const Color(0xFF10B981),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSummaryIndicatorCard(
+                                'PL Pending',
+                                '₹${plPending.toStringAsFixed(0)}',
+                                Icons.pending_actions,
+                                const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  },
+                ),
                 Row(
                   children: [
                     Expanded(
