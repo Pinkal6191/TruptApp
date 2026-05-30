@@ -184,8 +184,8 @@ class PdfContractService {
 
             pw.Text('2. RULES & REGULATIONS', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: primaryColor)),
             pw.SizedBox(height: 6),
-            _buildBulletPoint('Exclusivity: ', 'Party B agrees to exclusively purchase custom-labeled water from Party A for the duration of this agreement.', textDark),
-            _buildBulletPoint('Label Design: ', 'Party B is responsible for providing the label design or approving the design provided by Party A. Once approved, the One-Time Setup Fee covers initial printing. Please note that the One-Time Setup & Label Printing Fee is strictly non-refundable.', textDark),
+            _buildBulletPoint('Exclusivity: ', '$customerName agrees to exclusively purchase custom-labeled water from TRUPT ENTERPRISE for the duration of this agreement.', textDark),
+            _buildBulletPoint('Label Design: ', '$customerName is responsible for providing the label design or approving the design provided by TRUPT ENTERPRISE. Once approved, the One-Time Setup Fee covers initial printing. Please note that the One-Time Setup & Label Printing Fee is strictly non-refundable.', textDark),
             _buildBulletPoint('Minimum Order Quantity (MOQ): ', 'Each delivery requires a minimum order of:\n'
                 '${moq200ml != null ? '  - $moq200ml crates of 200ml bottles\n' : ''}'
                 '${moq500ml != null ? '  - $moq500ml crates of 500ml bottles\n' : ''}'
@@ -195,43 +195,46 @@ class PdfContractService {
             _buildBulletPoint('Termination: ', 'Either party may terminate this agreement with a 30-day written notice. If $customerName terminates this agreement without the required 30-day notice, $customerName shall be fully liable to reimburse TRUPT ENTERPRISE for the cost of all unused custom labels in stock and any pending production costs already incurred.', textDark),
             pw.SizedBox(height: 12),
 
-            // Wrap the closing and signature in a Column so it tries to stay together
-            pw.Wrap(
-              children: [
-                pw.Text('IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.', style: pw.TextStyle(fontSize: 11, color: textDark, fontStyle: pw.FontStyle.italic)),
-                pw.SizedBox(height: 30, width: double.infinity),
+            // Wrap the closing and signature in a Container to prevent page breaking inside it
+            pw.Container(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.', style: pw.TextStyle(fontSize: 11, color: textDark, fontStyle: pw.FontStyle.italic)),
+                  pw.SizedBox(height: 40),
 
-                // Signatures
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Container(width: 180, height: 1, color: PdfColors.grey600),
-                        pw.SizedBox(height: 8),
-                        pw.Text('For Trupt Enterprise', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('Authorized Signatory', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('(Company Stamp)', style: pw.TextStyle(fontSize: 10, color: textGrey, fontStyle: pw.FontStyle.italic)),
-                      ],
-                    ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Container(width: 180, height: 1, color: PdfColors.grey600),
-                        pw.SizedBox(height: 8),
-                        pw.Text('For $customerName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('Authorized Signatory', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('(Company Stamp)', style: pw.TextStyle(fontSize: 10, color: textGrey, fontStyle: pw.FontStyle.italic)),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                  // Signatures
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Container(width: 180, height: 1, color: PdfColors.grey600),
+                          pw.SizedBox(height: 8),
+                          pw.Text('For Trupt Enterprise', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('Authorized Signatory', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('(Company Stamp)', style: pw.TextStyle(fontSize: 10, color: textGrey, fontStyle: pw.FontStyle.italic)),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Container(width: 180, height: 1, color: PdfColors.grey600),
+                          pw.SizedBox(height: 8),
+                          pw.Text('For $customerName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: textDark)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('Authorized Signatory', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('(Company Stamp)', style: pw.TextStyle(fontSize: 10, color: textGrey, fontStyle: pw.FontStyle.italic)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ];
         },
