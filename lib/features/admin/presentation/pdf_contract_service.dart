@@ -107,7 +107,6 @@ class PdfContractService {
               children: [
                 pw.Expanded(
                   child: pw.Container(
-                    height: 85,
                     padding: const pw.EdgeInsets.all(10),
                     decoration: pw.BoxDecoration(
                       color: lightBgColor,
@@ -117,12 +116,15 @@ class PdfContractService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('PARTY A (Supplier)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
+                        pw.Text('PARTY A (Manufacturer & Supplier)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
                         pw.SizedBox(height: 6),
-                        pw.Text('Trupt Enterprise', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                        pw.Text('TRUPT ENTERPRISE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 2),
-                        pw.Text('Address: [Insert Supplier Address]', style: pw.TextStyle(fontSize: 10, color: textGrey)),
-                        pw.Text('Contact: [Insert Supplier Contact]', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Address: 4160, B/H Mahalaxmi Cold Storage, Boriavi, Anand - 387310', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Phone: +91 96624 98664, +91 98793 95727', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Email: truptenterprise26@gmail.com', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('Website: truptenterprise.com', style: pw.TextStyle(fontSize: 10, color: textGrey)),
+                        pw.Text('GSTIN: 24AAZFT5241K1ZK', style: pw.TextStyle(fontSize: 10, color: textGrey)),
                       ],
                     ),
                   ),
@@ -130,7 +132,6 @@ class PdfContractService {
                 pw.SizedBox(width: 16),
                 pw.Expanded(
                   child: pw.Container(
-                    height: 85,
                     padding: const pw.EdgeInsets.all(10),
                     decoration: pw.BoxDecoration(
                       color: lightBgColor,
@@ -180,9 +181,9 @@ class PdfContractService {
             _buildBulletPoint('Exclusivity: ', 'Party B agrees to exclusively purchase custom-labeled water from Party A for the duration of this agreement.', textDark),
             _buildBulletPoint('Label Design: ', 'Party B is responsible for providing the label design or approving the design provided by Party A. Once approved, the One-Time Setup Fee covers initial printing. Please note that the One-Time Setup & Label Printing Fee is strictly non-refundable.', textDark),
             _buildBulletPoint('Minimum Order Quantity (MOQ): ', 'Each delivery requires a minimum order of:\n'
-                '${moq200ml != null ? '• $moq200ml crates of 200ml bottles\n' : ''}'
-                '${moq500ml != null ? '• $moq500ml crates of 500ml bottles\n' : ''}'
-                '${moq1L != null ? '• $moq1L crates of 1L bottles\n' : ''}'
+                '${moq200ml != null ? '  - $moq200ml crates of 200ml bottles\n' : ''}'
+                '${moq500ml != null ? '  - $moq500ml crates of 500ml bottles\n' : ''}'
+                '${moq1L != null ? '  - $moq1L crates of 1L bottles\n' : ''}'
                 'to qualify for the prices listed above.', textDark),
             _buildBulletPoint('Payment Terms: ', 'Payments must be made within 15 days of delivery.', textDark),
             _buildBulletPoint('Termination: ', 'Either party may terminate this agreement with a 30-day written notice.', textDark),
