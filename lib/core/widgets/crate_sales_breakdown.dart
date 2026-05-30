@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../models/order_model.dart';
 
 class CrateSalesBreakdown extends StatefulWidget {
@@ -174,183 +175,131 @@ class _CrateSalesBreakdownState extends State<CrateSalesBreakdown> {
             ),
             const SizedBox(height: 20),
 
-            // Crate Progress list
-            _buildProductRow('200ml', count200ml, pct200, avgCost200ml, const Color(0xFF3B82F6), topSeller == '200ml'),
-            const SizedBox(height: 16),
-            _buildProductRow('500ml', count500ml, pct500, avgCost500ml, const Color(0xFF10B981), topSeller == '500ml'),
-            const SizedBox(height: 16),
-            _buildProductRow('1L (1 Liter)', count1L, pct1L, avgCost1L, const Color(0xFF8B5CF6), topSeller == '1L'),
-
-            if (totalCrates > 0 && topSeller != 'None') ...[
-              const Divider(height: 40),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFA7F3D0)),
+            if (totalCrates == 0)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.0),
+                  child: Text(
+                    'No crate sales data for this period.',
+                    style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                  ),
                 ),
+              )
+            else
+              // Pie Chart and Legend
+              SizedBox(
+                height: 200,
                 child: Row(
                   children: [
-                    const Icon(Icons.stars, color: Color(0xFF059669), size: 24),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(color: Color(0xFF065F46), fontSize: 13),
-                          children: [
-                            const TextSpan(text: 'Top Selling Size: '),
-                            TextSpan(
-                              text: topSeller,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                      flex: 4,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          PieChart(
+                            PieChartData(
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 40,
+                              sections: [
+                                if (count200ml > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFF3B82F6),
+                                    value: count200ml.toDouble(),
+                                    title: '${(pct200 * 100).toStringAsFixed(1)}%',
+                                    radius: 40,
+                                    titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                if (count500ml > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFF10B981),
+                                    value: count500ml.toDouble(),
+                                    title: '${(pct500 * 100).toStringAsFixed(1)}%',
+                                    radius: 40,
+                                    titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                if (count1L > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFF8B5CF6),
+                                    value: count1L.toDouble(),
+                                    title: '${(pct1L * 100).toStringAsFixed(1)}%',
+                                    radius: 40,
+                                    titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                              ],
                             ),
-                            TextSpan(
-                              text: ' is your most popular packaging size in this period, contributing ',
-                            ),
-                            TextSpan(
-                              text: '${((topSeller == '200ml' ? pct200 : topSeller == '500ml' ? pct500 : pct1L) * 100).toStringAsFixed(1)}%',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const TextSpan(text: ' of all orders!'),
-                          ],
-                        ),
+                          ),
+                          // Center Text for Top Seller
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Top', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                              Text(
+                                topSeller,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLegendItem('200ml', count200ml, avgCost200ml, const Color(0xFF3B82F6)),
+                          const SizedBox(height: 12),
+                          _buildLegendItem('500ml', count500ml, avgCost500ml, const Color(0xFF10B981)),
+                          const SizedBox(height: 12),
+                          _buildLegendItem('1L', count1L, avgCost1L, const Color(0xFF8B5CF6)),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProductRow(String sizeName, int quantity, double percentage, double avgCost, Color color, bool isTopSeller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildLegendItem(String sizeName, int quantity, double avgCost, Color color) {
+    return Row(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  sizeName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                if (isTopSeller) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.emoji_events, size: 10, color: Color(0xFFD97706)),
-                        SizedBox(width: 4),
-                        Text(
-                          'TOP SELLER',
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFB45309),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            Row(
-              children: [
-                Text(
-                  '$quantity Crates ',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                Text(
-                  '(${((percentage) * 100).toStringAsFixed(1)}%)',
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Avg: ₹${avgCost.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final trackWidth = constraints.maxWidth;
-            return Stack(
-              children: [
-                Container(
-                  height: 10,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(5),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sizeName,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+              ),
+              Row(
+                children: [
+                  Text(
+                    '$quantity Crates',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  height: 10,
-                  width: trackWidth * percentage,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color, color.withOpacity(0.8)],
+                  if (quantity > 0) ...[
+                    const Text(' • ', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(
+                      '₹${avgCost.toStringAsFixed(2)} avg',
+                      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
-                    borderRadius: BorderRadius.circular(5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );

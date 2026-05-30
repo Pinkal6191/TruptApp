@@ -131,12 +131,14 @@ class _ContractsListScreenState extends State<ContractsListScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              contract.customerName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E3A8A),
+                            Expanded(
+                              child: Text(
+                                contract.customerName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E3A8A),
+                                ),
                               ),
                             ),
                             Text(
@@ -186,7 +188,7 @@ class _ContractsListScreenState extends State<ContractsListScreen> {
           );
         },
         backgroundColor: const Color(0xFF1E3A8A),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
