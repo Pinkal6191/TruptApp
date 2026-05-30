@@ -124,7 +124,7 @@ class PdfContractService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('PARTY A (Manufacturer & Supplier)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
+                        pw.Text('MANUFACTURER & SUPPLIER', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
                         pw.SizedBox(height: 6),
                         pw.Text('TRUPT ENTERPRISE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 2),
@@ -147,7 +147,7 @@ class PdfContractService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('PARTY B (Client)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
+                        pw.Text('CLIENT', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentColor, fontSize: 10)),
                         pw.SizedBox(height: 8),
                         pw.Text(customerName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                         pw.SizedBox(height: 4),
