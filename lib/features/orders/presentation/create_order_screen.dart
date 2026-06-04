@@ -12,6 +12,7 @@ import '../../products/bloc/product_state.dart';
 import '../bloc/order_bloc.dart';
 import '../bloc/order_event.dart';
 import '../repository/order_repository.dart';
+import '../../inventory/bloc/inventory_bloc.dart';
 import '../../admin/repository/user_repository.dart';
 import '../../customers/bloc/customer_bloc.dart';
 import '../../customers/bloc/customer_event.dart';
@@ -154,7 +155,30 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     super.dispose();
   }
 
+  int _getAvailableStock(String productId, UserModel user) {
+    if (user.role == 'admin') return 999999;
+    final invState = context.read<InventoryBloc>().state;
+    if (invState is InventoryLoaded) {
+      final invItem = invState.inventory.where((i) => i.productId == productId).firstOrNull;
+      return invItem?.stockCount ?? 0;
+    }
+    return 0;
+  }
+
   void _addToCart(ProductModel product, UserModel user) {
+    if (user.role == 'distributor') {
+      final available = _getAvailableStock(product.id, user);
+      final index = _cart.indexWhere((item) => item.productId == product.id);
+      final currentQty = index != -1 ? _cart[index].quantity : 0;
+      if (currentQty + 1 > available) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Not enough stock! You only have $available crates of ${product.name}.'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+    }
+
     final index = _cart.indexWhere((item) => item.productId == product.id);
     
     double defaultPrice = (user.role == 'admin' && _selectedDistributor != null) 
@@ -192,18 +216,35 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       setState(() {
         _cart.removeAt(index);
       });
-    } else {
-      setState(() {
-        final existing = _cart[index];
-        _cart[index] = OrderItemModel(
-          productId: existing.productId,
-          productName: existing.productName,
-          quantity: newQuantity,
-          pricePerCrate: existing.pricePerCrate,
-          distributorCost: existing.distributorCost,
-        );
-      });
+      return;
     }
+
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      final user = authState.user;
+      if (user.role == 'distributor') {
+        final item = _cart[index];
+        final available = _getAvailableStock(item.productId, user);
+        if (newQuantity > available) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Not enough stock! You only have $available crates of ${item.productName}.'),
+            backgroundColor: Colors.red,
+          ));
+          return;
+        }
+      }
+    }
+
+    setState(() {
+      final existing = _cart[index];
+      _cart[index] = OrderItemModel(
+        productId: existing.productId,
+        productName: existing.productName,
+        quantity: newQuantity,
+        pricePerCrate: existing.pricePerCrate,
+        distributorCost: existing.distributorCost,
+      );
+    });
   }
 
   /// Shows a dialog to edit both quantity and price together for a cart item.
@@ -328,6 +369,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               if (!formKey.currentState!.validate()) return;
               final newQty = int.parse(qtyController.text.trim());
               final newPrice = double.parse(priceController.text.trim());
+              
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                final user = authState.user;
+                if (user.role == 'distributor') {
+                  final available = _getAvailableStock(item.productId, user);
+                  if (newQty > available) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Text('Not enough stock! You only have $available crates of ${item.productName}.'),
+                      backgroundColor: Colors.red,
+                    ));
+                    return;
+                  }
+                }
+              }
+
               setState(() {
                 if (newQty <= 0) {
                   _cart.removeAt(index);
