@@ -346,7 +346,7 @@
           const data = await response.json();
           const serverVersion = data.version + '+' + data.build_number;
 
-          const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+3' : RUNNING_VERSION;
+          const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+4' : RUNNING_VERSION;
           console.log('[App Version] Check - Running:', loadedVersion, 'Server:', serverVersion);
 
           if (loadedVersion !== serverVersion) {
@@ -423,7 +423,7 @@
       }, 60000);
 
       // Dynamic loading of flutter_bootstrap.js with cache-busting version query parameter
-      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1' : RUNNING_VERSION;
+      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+4' : RUNNING_VERSION;
       const script = document.createElement('script');
       script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(loadedVersion);
       script.async = true;
