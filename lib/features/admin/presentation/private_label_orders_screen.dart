@@ -723,7 +723,9 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                       itemCount: creatorOrders.length,
                       itemBuilder: (context, subIndex) {
                         final order = creatorOrders[subIndex];
-                        final customerDisplay = order.shopName.isNotEmpty ? order.shopName : '(No Shop Name)';
+                        final customerDisplay = order.shopName.isNotEmpty 
+                            ? order.shopName 
+                            : (order.partnerName.isNotEmpty ? order.partnerName : '(No Shop Name)');
                         final pending = order.remainingAmount;
                         final isOverpaid = pending < 0;
 
