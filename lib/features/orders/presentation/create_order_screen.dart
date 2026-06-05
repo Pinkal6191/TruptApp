@@ -487,8 +487,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Partner reference')));
             return;
           }
-          // Credit this supply to the referred partner
-          displayPartnerName = _selectedPartnerReference!.name;
+          // Credit this supply to the referred partner, but keep distributor's name as partnerName
           finalReference = _selectedPartnerReference!.name;
           finalReferredPartnerId = _selectedPartnerReference!.uid;
         }

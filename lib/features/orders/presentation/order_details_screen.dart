@@ -345,9 +345,22 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_currentOrder.isSupplyOrder ? "Distributor" : _currentOrder.creatorRole == "admin" ? "Admin" : "Partner"}: ${_currentOrder.partnerName}',
+                        '${_currentOrder.isSupplyOrder ? "Distributor" : (_currentOrder.creatorRole == "admin" && _currentOrder.referredPartnerId.isEmpty) ? "Admin" : "Partner"}: ${_currentOrder.partnerName}',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
+                      if (_currentOrder.referredPartnerId.isNotEmpty && _currentOrder.orderReference.isNotEmpty && _currentOrder.orderReference != 'Direct (Online / Call)') ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.handshake_outlined, size: 14, color: Colors.indigo.shade600),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Referred by: ${_currentOrder.orderReference}',
+                              style: TextStyle(color: Colors.indigo.shade600, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text('Date: ${DateFormat('MMM dd, yyyy - hh:mm a').format(_currentOrder.createdAt)}', style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 8),
