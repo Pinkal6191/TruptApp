@@ -109,11 +109,22 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       }
 
       if (!aggregated.containsKey(key)) {
-        aggregated[key] = {'name': key, 'orders': 0, 'sales': 0.0, 'paid': 0.0};
+        aggregated[key] = {'name': key, 'orders': 0, 'sales': 0.0, 'paid': 0.0, 'commission': 0.0};
       }
+      
+      double commission = 0.0;
+      if (o.creatorRole == 'distributor') {
+        for (var item in o.items) {
+          if (item.pricePerCrate > item.distributorCost && item.distributorCost > 0) {
+            commission += ((item.pricePerCrate - item.distributorCost) * item.quantity);
+          }
+        }
+      }
+
       aggregated[key]!['orders'] = (aggregated[key]!['orders'] as int) + 1;
       aggregated[key]!['sales'] = (aggregated[key]!['sales'] as double) + o.finalAmount;
       aggregated[key]!['paid'] = (aggregated[key]!['paid'] as double) + o.paidAmount;
+      aggregated[key]!['commission'] = (aggregated[key]!['commission'] as double) + commission;
     }
 
     var resultList = aggregated.values.toList();
@@ -225,18 +236,34 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ]);
       }
     } else {
-      rows.add(['Name', 'Total Orders', 'Total Sales', 'Total Paid', 'Balance']);
-
-      for (var row in data) {
-        double sales = row['sales'];
-        double paid = row['paid'];
-        rows.add([
-          row['name'],
-          row['orders'],
-          sales.toStringAsFixed(2),
-          paid.toStringAsFixed(2),
-          (sales - paid).toStringAsFixed(2)
-        ]);
+      if (_reportType == 'distributor') {
+        rows.add(['Name', 'Total Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']);
+        for (var row in data) {
+          double sales = row['sales'];
+          double paid = row['paid'];
+          double comm = row['commission'] ?? 0.0;
+          rows.add([
+            row['name'],
+            row['orders'],
+            sales.toStringAsFixed(2),
+            comm.toStringAsFixed(2),
+            paid.toStringAsFixed(2),
+            (sales - paid).toStringAsFixed(2)
+          ]);
+        }
+      } else {
+        rows.add(['Name', 'Total Orders', 'Total Sales', 'Total Paid', 'Balance']);
+        for (var row in data) {
+          double sales = row['sales'];
+          double paid = row['paid'];
+          rows.add([
+            row['name'],
+            row['orders'],
+            sales.toStringAsFixed(2),
+            paid.toStringAsFixed(2),
+            (sales - paid).toStringAsFixed(2)
+          ]);
+        }
       }
     }
 
@@ -307,7 +334,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             pw.TableHelper.fromTextArray(
               headers: _reportType == 'order_wise'
                   ? ['Inv No', 'Date', 'Customer/Shop', 'GST Number', 'Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']
-                  : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
+                  : _reportType == 'distributor'
+                      ? ['Name', 'Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']
+                      : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
               data: data.map((row) {
                 if (_reportType == 'order_wise') {
                   final double subtotal = row['subtotal'] ?? 0.0;
@@ -325,6 +354,15 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     'Rs. ${sales.toStringAsFixed(2)}',
                     'Rs. ${paid.toStringAsFixed(2)}',
                     'Rs. ${balance.toStringAsFixed(2)}',
+                  ];
+                } else if (_reportType == 'distributor') {
+                  return [
+                    row['name'],
+                    row['orders'].toString(),
+                    'Rs. ${(row['sales'] as double).toStringAsFixed(2)}',
+                    'Rs. ${(row['commission'] as double? ?? 0.0).toStringAsFixed(2)}',
+                    'Rs. ${(row['paid'] as double).toStringAsFixed(2)}',
+                    'Rs. ${((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(2)}',
                   ];
                 } else {
                   return [
@@ -351,13 +389,22 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       7: pw.Alignment.centerRight,
                       8: pw.Alignment.centerRight,
                     }
-                  : {
-                      0: pw.Alignment.centerLeft,
-                      1: pw.Alignment.center,
-                      2: pw.Alignment.centerRight,
-                      3: pw.Alignment.centerRight,
-                      4: pw.Alignment.centerRight,
-                    },
+                  : _reportType == 'distributor'
+                      ? {
+                          0: pw.Alignment.centerLeft,
+                          1: pw.Alignment.center,
+                          2: pw.Alignment.centerRight,
+                          3: pw.Alignment.centerRight,
+                          4: pw.Alignment.centerRight,
+                          5: pw.Alignment.centerRight,
+                        }
+                      : {
+                          0: pw.Alignment.centerLeft,
+                          1: pw.Alignment.center,
+                          2: pw.Alignment.centerRight,
+                          3: pw.Alignment.centerRight,
+                          4: pw.Alignment.centerRight,
+                        },
             ),
           ];
         },
@@ -669,6 +716,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         _buildStatColumn('Sales', sales, Colors.black87),
+                                        if (_reportType == 'distributor')
+                                          _buildStatColumn('Commission', row['commission'] ?? 0.0, Colors.indigo),
                                         _buildStatColumn('Paid', paid, Colors.green),
                                         _buildStatColumn('Balance', balance, balance > 0 ? Colors.red : Colors.grey),
                                       ],
