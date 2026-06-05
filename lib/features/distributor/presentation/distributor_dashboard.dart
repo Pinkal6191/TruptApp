@@ -81,13 +81,21 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                   builder: (context, state) {
                     double totalSales = 0;
                     double totalCommission = 0;
+                    double totalPaidToAdmin = 0;
+                    double totalOwedToAdmin = 0;
+                    
                     if (state is OrdersLoaded) {
-                      totalSales = state.orders.fold(0, (sum, o) => sum + o.finalAmount);
-                      // Commission calculation: (Actual Sell Price - Distributor Cost) * Quantity
                       for (var order in state.orders) {
-                        for (var item in order.items) {
-                          if (item.pricePerCrate > item.distributorCost && item.distributorCost > 0) {
-                            totalCommission += ((item.pricePerCrate - item.distributorCost) * item.quantity);
+                        if (order.isSupplyOrder && order.targetUserId == user.uid) {
+                          totalPaidToAdmin += order.paidAmount;
+                          totalOwedToAdmin += order.remainingAmount;
+                        } else if (!order.isSupplyOrder && order.createdBy == user.uid) {
+                          totalSales += order.finalAmount;
+                          // Commission calculation: (Actual Sell Price - Distributor Cost) * Quantity
+                          for (var item in order.items) {
+                            if (item.pricePerCrate > item.distributorCost && item.distributorCost > 0) {
+                              totalCommission += ((item.pricePerCrate - item.distributorCost) * item.quantity);
+                            }
                           }
                         }
                       }
@@ -99,6 +107,14 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                             _summaryCard('My Sales', '₹${totalSales.toStringAsFixed(0)}', Icons.payments, Colors.green),
                             const SizedBox(width: 16),
                             _summaryCard('My Commission', '₹${totalCommission.toStringAsFixed(0)}', Icons.account_balance, Colors.indigo),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _summaryCard('Paid to Admin', '₹${totalPaidToAdmin.toStringAsFixed(0)}', Icons.check_circle, Colors.teal),
+                            const SizedBox(width: 16),
+                            _summaryCard('Owed to Admin', '₹${totalOwedToAdmin.toStringAsFixed(0)}', Icons.warning_amber_rounded, Colors.redAccent),
                           ],
                         ),
                         const SizedBox(height: 16),
