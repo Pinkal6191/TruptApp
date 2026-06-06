@@ -21,6 +21,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _statusFilter = 'All'; // 'All', 'Pending'
+  String _distributorView = 'Retail Sales'; // 'Retail Sales', 'Purchases From Admin'
   int _currentPage = 1;
   static const int _pageSize = 20;
 
@@ -134,18 +135,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           } else if (state is OrdersLoaded) {
             final authState = context.read<AuthBloc>().state;
             final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
+            final bool isDistributor = authState is Authenticated && authState.user.role == 'distributor';
             final String? currentUserId = authState is Authenticated ? authState.user.uid : null;
             final String? currentUserName = authState is Authenticated ? authState.user.name : null;
 
             var sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
             
             if (!isAdmin && currentUserId != null) {
-              sortedOrders = sortedOrders.where((o) => 
-                o.createdBy == currentUserId || 
-                o.referredPartnerId == currentUserId || 
-                o.targetUserId == currentUserId || 
-                o.partnerName == currentUserName
-              ).toList();
+              sortedOrders = sortedOrders.where((o) {
+                bool isUserRelated = o.createdBy == currentUserId || 
+                                     o.referredPartnerId == currentUserId || 
+                                     o.targetUserId == currentUserId || 
+                                     o.partnerName == currentUserName;
+                if (!isUserRelated) return false;
+                
+                if (isDistributor) {
+                  if (_distributorView == 'Retail Sales') {
+                    return !o.isSupplyOrder;
+                  } else {
+                    return o.isSupplyOrder && o.targetUserId == currentUserId;
+                  }
+                }
+                return true;
+              }).toList();
             }
 
             if (sortedOrders.isEmpty) {
@@ -235,56 +247,111 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      FilterChip(
-                        label: const Text('All Orders'),
-                        selected: _statusFilter == 'All',
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _statusFilter = 'All';
-                              _currentPage = 1;
-                            });
-                          }
-                        },
-                        selectedColor: const Color(0xFFEFF6FF),
-                        checkmarkColor: const Color(0xFF1E3A8A),
-                        labelStyle: TextStyle(
-                          color: _statusFilter == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
-                          fontWeight: _statusFilter == 'All' ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 13,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        if (isDistributor) ...[
+                          FilterChip(
+                            label: const Text('Retail Sales'),
+                            selected: _distributorView == 'Retail Sales',
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _distributorView = 'Retail Sales';
+                                  _currentPage = 1;
+                                });
+                              }
+                            },
+                            selectedColor: const Color(0xFFEFF6FF),
+                            checkmarkColor: const Color(0xFF1E3A8A),
+                            labelStyle: TextStyle(
+                              color: _distributorView == 'Retail Sales' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                              fontWeight: _distributorView == 'Retail Sales' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            side: BorderSide(
+                              color: _distributorView == 'Retail Sales' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            label: const Text('Supply Purchases'),
+                            selected: _distributorView == 'Purchases From Admin',
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _distributorView = 'Purchases From Admin';
+                                  _currentPage = 1;
+                                });
+                              }
+                            },
+                            selectedColor: const Color(0xFFFEF3C7),
+                            checkmarkColor: const Color(0xFFD97706),
+                            labelStyle: TextStyle(
+                              color: _distributorView == 'Purchases From Admin' ? const Color(0xFFB45309) : Colors.grey.shade600,
+                              fontWeight: _distributorView == 'Purchases From Admin' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            side: BorderSide(
+                              color: _distributorView == 'Purchases From Admin' ? const Color(0xFFFBBF24).withValues(alpha: 0.5) : Colors.grey.shade300,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(height: 24, width: 1, color: Colors.grey.shade300),
+                          const SizedBox(width: 8),
+                        ],
+                        FilterChip(
+                          label: const Text('All Status'),
+                          selected: _statusFilter == 'All',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _statusFilter = 'All';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFEFF6FF),
+                          checkmarkColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: _statusFilter == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                            fontWeight: _statusFilter == 'All' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _statusFilter == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        side: BorderSide(
-                          color: _statusFilter == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Pending Orders'),
+                          selected: _statusFilter == 'Pending',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _statusFilter = 'Pending';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFFEF3C7),
+                          checkmarkColor: const Color(0xFFD97706),
+                          labelStyle: TextStyle(
+                            color: _statusFilter == 'Pending' ? const Color(0xFFB45309) : Colors.grey.shade600,
+                            fontWeight: _statusFilter == 'Pending' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _statusFilter == 'Pending' ? const Color(0xFFFBBF24).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('Pending Orders'),
-                        selected: _statusFilter == 'Pending',
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _statusFilter = 'Pending';
-                              _currentPage = 1;
-                            });
-                          }
-                        },
-                        selectedColor: const Color(0xFFFEF3C7),
-                        checkmarkColor: const Color(0xFFD97706),
-                        labelStyle: TextStyle(
-                          color: _statusFilter == 'Pending' ? const Color(0xFFB45309) : Colors.grey.shade600,
-                          fontWeight: _statusFilter == 'Pending' ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 13,
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        side: BorderSide(
-                          color: _statusFilter == 'Pending' ? const Color(0xFFFBBF24).withValues(alpha: 0.5) : Colors.grey.shade300,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 Expanded(
