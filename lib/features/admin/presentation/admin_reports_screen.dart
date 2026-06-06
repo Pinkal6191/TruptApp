@@ -80,6 +80,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       
       return sorted.map((o) {
         String crateDetails = o.items.map((item) => '${item.productName} - ${item.quantity}').join(', ');
+        Map<String, int> itemsMap = {};
+        for (var item in o.items) {
+          itemsMap[item.productName] = item.quantity;
+        }
 
         return {
           'name': o.shopName.isNotEmpty ? o.shopName : o.partnerName,
@@ -94,6 +98,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           'paymentStatus': o.paymentStatus,
           'partnerName': o.partnerName,
           'crateDetails': crateDetails,
+          'itemsMap': itemsMap,
           'isOrderWise': true,
         };
       }).toList();
@@ -205,12 +210,22 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     ];
 
     if (_reportType == 'order_wise') {
-      rows.add([
+      Set<String> productNames = {};
+      for (var row in data) {
+        if (row['itemsMap'] != null) {
+          productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
+        }
+      }
+      List<String> sortedProducts = productNames.toList()..sort();
+
+      List<dynamic> headerRow = [
         'Invoice No',
         'Date',
         'Customer/Shop Name',
         'GST Number',
-        'Crate Details',
+      ];
+      headerRow.addAll(sortedProducts);
+      headerRow.addAll([
         'Subtotal (Excl. GST)',
         'GST Rate',
         'GST Amount',
@@ -219,6 +234,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         'Balance Amount',
         'Payment Status'
       ]);
+      rows.add(headerRow);
 
       for (var row in data) {
         double subtotal = row['subtotal'] ?? 0.0;
@@ -226,13 +242,21 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         double sales = row['sales'] ?? 0.0;
         double paid = row['paid'] ?? 0.0;
         double balance = sales - paid;
+        
+        Map<String, int> itemsMap = row['itemsMap'] ?? {};
 
-        rows.add([
+        List<dynamic> dataRow = [
           row['invoiceNumber'] ?? '',
           row['date'] ?? '',
           row['name'] ?? '',
           row['customerGst'] ?? '',
-          row['crateDetails'] ?? '',
+        ];
+        
+        for (String product in sortedProducts) {
+          dataRow.add(itemsMap[product]?.toString() ?? '0');
+        }
+
+        dataRow.addAll([
           subtotal.toStringAsFixed(2),
           '5%',
           gstAmount.toStringAsFixed(2),
@@ -241,6 +265,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           balance.toStringAsFixed(2),
           row['paymentStatus'] ?? ''
         ]);
+        
+        rows.add(dataRow);
       }
     } else {
       if (_reportType == 'distributor') {
@@ -337,10 +363,41 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             ),
             pw.SizedBox(height: 12),
 
+            // Extract unique product names for order_wise
+            Set<String> productNames = {};
+            if (_reportType == 'order_wise') {
+              for (var row in data) {
+                if (row['itemsMap'] != null) {
+                  productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
+                }
+              }
+            }
+            List<String> sortedProducts = productNames.toList()..sort();
+
+            List<String> orderWiseHeaders = ['Inv No', 'Date', 'Customer/Shop', 'GST Number'];
+            orderWiseHeaders.addAll(sortedProducts);
+            orderWiseHeaders.addAll(['Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']);
+
+            Map<int, pw.Alignment> orderWiseAlignments = {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.center,
+            };
+            int colIndex = 4;
+            for (int i = 0; i < sortedProducts.length; i++) {
+              orderWiseAlignments[colIndex++] = pw.Alignment.center;
+            }
+            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Subtotal
+            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // GST
+            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Total
+            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Paid
+            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Balance
+
             // Main Table
             pw.TableHelper.fromTextArray(
               headers: _reportType == 'order_wise'
-                  ? ['Inv No', 'Date', 'Customer/Shop', 'GST Number', 'Crate Details', 'Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']
+                  ? orderWiseHeaders
                   : _reportType == 'distributor'
                       ? ['Name', 'Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']
                       : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
@@ -351,18 +408,25 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   final double sales = row['sales'] ?? 0.0;
                   final double paid = row['paid'] ?? 0.0;
                   final double balance = sales - paid;
-                  return [
+                  Map<String, int> itemsMap = row['itemsMap'] ?? {};
+                  
+                  List<String> rowData = [
                     row['invoiceNumber'] ?? '',
                     row['date'] ?? '',
                     row['name'] ?? '',
                     row['customerGst'] ?? 'N/A',
-                    row['crateDetails'] ?? '',
+                  ];
+                  for (String product in sortedProducts) {
+                    rowData.add(itemsMap[product]?.toString() ?? '0');
+                  }
+                  rowData.addAll([
                     'Rs. ${subtotal.toStringAsFixed(2)}',
                     'Rs. ${gstAmount.toStringAsFixed(2)}',
                     'Rs. ${sales.toStringAsFixed(2)}',
                     'Rs. ${paid.toStringAsFixed(2)}',
                     'Rs. ${balance.toStringAsFixed(2)}',
-                  ];
+                  ]);
+                  return rowData;
                 } else if (_reportType == 'distributor') {
                   return [
                     row['name'],
@@ -386,18 +450,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
               cellStyle: const pw.TextStyle(fontSize: 7),
               cellAlignments: _reportType == 'order_wise'
-                  ? {
-                      0: pw.Alignment.centerLeft,
-                      1: pw.Alignment.center,
-                      2: pw.Alignment.centerLeft,
-                      3: pw.Alignment.center,
-                      4: pw.Alignment.centerLeft,
-                      5: pw.Alignment.centerRight,
-                      6: pw.Alignment.centerRight,
-                      7: pw.Alignment.centerRight,
-                      8: pw.Alignment.centerRight,
-                      9: pw.Alignment.centerRight,
-                    }
+                  ? orderWiseAlignments
                   : _reportType == 'distributor'
                       ? {
                           0: pw.Alignment.centerLeft,
