@@ -317,6 +317,37 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
         build: (pw.Context context) {
+          // Extract unique product names for order_wise
+          Set<String> productNames = {};
+          if (_reportType == 'order_wise') {
+            for (var row in data) {
+              if (row['itemsMap'] != null) {
+                productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
+              }
+            }
+          }
+          List<String> sortedProducts = productNames.toList()..sort();
+
+          List<String> orderWiseHeaders = ['Inv No', 'Date', 'Customer/Shop', 'GST Number'];
+          orderWiseHeaders.addAll(sortedProducts);
+          orderWiseHeaders.addAll(['Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']);
+
+          Map<int, pw.Alignment> orderWiseAlignments = {
+            0: pw.Alignment.centerLeft,
+            1: pw.Alignment.center,
+            2: pw.Alignment.centerLeft,
+            3: pw.Alignment.center,
+          };
+          int colIndex = 4;
+          for (int i = 0; i < sortedProducts.length; i++) {
+            orderWiseAlignments[colIndex++] = pw.Alignment.center;
+          }
+          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Subtotal
+          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // GST
+          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Total
+          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Paid
+          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Balance
+
           return [
             // Company and Report Header Info
             pw.Row(
@@ -362,37 +393,6 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               ],
             ),
             pw.SizedBox(height: 12),
-
-            // Extract unique product names for order_wise
-            Set<String> productNames = {};
-            if (_reportType == 'order_wise') {
-              for (var row in data) {
-                if (row['itemsMap'] != null) {
-                  productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
-                }
-              }
-            }
-            List<String> sortedProducts = productNames.toList()..sort();
-
-            List<String> orderWiseHeaders = ['Inv No', 'Date', 'Customer/Shop', 'GST Number'];
-            orderWiseHeaders.addAll(sortedProducts);
-            orderWiseHeaders.addAll(['Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']);
-
-            Map<int, pw.Alignment> orderWiseAlignments = {
-              0: pw.Alignment.centerLeft,
-              1: pw.Alignment.center,
-              2: pw.Alignment.centerLeft,
-              3: pw.Alignment.center,
-            };
-            int colIndex = 4;
-            for (int i = 0; i < sortedProducts.length; i++) {
-              orderWiseAlignments[colIndex++] = pw.Alignment.center;
-            }
-            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Subtotal
-            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // GST
-            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Total
-            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Paid
-            orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Balance
 
             // Main Table
             pw.TableHelper.fromTextArray(
