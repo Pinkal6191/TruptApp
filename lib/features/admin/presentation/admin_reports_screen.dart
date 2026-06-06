@@ -78,19 +78,24 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       List<OrderModel> sorted = List.from(filtered);
       sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
-      return sorted.map((o) => {
-        'name': o.shopName.isNotEmpty ? o.shopName : o.partnerName,
-        'invoiceNumber': o.invoiceNumber.isNotEmpty ? o.invoiceNumber : 'N/A',
-        'date': DateFormat('dd/MM/yyyy').format(o.createdAt),
-        'customerGst': o.customerGstNumber.isNotEmpty ? o.customerGstNumber : 'N/A',
-        'subtotal': o.subtotal,
-        'gstAmount': o.gstAmount,
-        'sales': o.finalAmount,
-        'paid': o.paidAmount,
-        'orders': 1,
-        'paymentStatus': o.paymentStatus,
-        'partnerName': o.partnerName,
-        'isOrderWise': true,
+      return sorted.map((o) {
+        String crateDetails = o.items.map((item) => '${item.productName} - ${item.quantity}').join(', ');
+
+        return {
+          'name': o.shopName.isNotEmpty ? o.shopName : o.partnerName,
+          'invoiceNumber': o.invoiceNumber.isNotEmpty ? o.invoiceNumber : 'N/A',
+          'date': DateFormat('dd/MM/yyyy').format(o.createdAt),
+          'customerGst': o.customerGstNumber.isNotEmpty ? o.customerGstNumber : 'N/A',
+          'subtotal': o.subtotal,
+          'gstAmount': o.gstAmount,
+          'sales': o.finalAmount,
+          'paid': o.paidAmount,
+          'orders': 1,
+          'paymentStatus': o.paymentStatus,
+          'partnerName': o.partnerName,
+          'crateDetails': crateDetails,
+          'isOrderWise': true,
+        };
       }).toList();
     }
 
@@ -205,6 +210,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         'Date',
         'Customer/Shop Name',
         'GST Number',
+        'Crate Details',
         'Subtotal (Excl. GST)',
         'GST Rate',
         'GST Amount',
@@ -226,6 +232,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           row['date'] ?? '',
           row['name'] ?? '',
           row['customerGst'] ?? '',
+          row['crateDetails'] ?? '',
           subtotal.toStringAsFixed(2),
           '5%',
           gstAmount.toStringAsFixed(2),
@@ -333,7 +340,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             // Main Table
             pw.TableHelper.fromTextArray(
               headers: _reportType == 'order_wise'
-                  ? ['Inv No', 'Date', 'Customer/Shop', 'GST Number', 'Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']
+                  ? ['Inv No', 'Date', 'Customer/Shop', 'GST Number', 'Crate Details', 'Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']
                   : _reportType == 'distributor'
                       ? ['Name', 'Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']
                       : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
@@ -349,6 +356,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     row['date'] ?? '',
                     row['name'] ?? '',
                     row['customerGst'] ?? 'N/A',
+                    row['crateDetails'] ?? '',
                     'Rs. ${subtotal.toStringAsFixed(2)}',
                     'Rs. ${gstAmount.toStringAsFixed(2)}',
                     'Rs. ${sales.toStringAsFixed(2)}',
@@ -383,11 +391,12 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       1: pw.Alignment.center,
                       2: pw.Alignment.centerLeft,
                       3: pw.Alignment.center,
-                      4: pw.Alignment.centerRight,
+                      4: pw.Alignment.centerLeft,
                       5: pw.Alignment.centerRight,
                       6: pw.Alignment.centerRight,
                       7: pw.Alignment.centerRight,
                       8: pw.Alignment.centerRight,
+                      9: pw.Alignment.centerRight,
                     }
                   : _reportType == 'distributor'
                       ? {
@@ -686,6 +695,20 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                           ],
                                         ),
                                       ],
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(Icons.inventory_2_outlined, size: 14, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              row['crateDetails'] ?? '',
+                                              style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
