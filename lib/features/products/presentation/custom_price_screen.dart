@@ -5,6 +5,7 @@ import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_state.dart';
+import '../../products/bloc/product_event.dart';
 import '../../admin/repository/user_repository.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/utils/route_tracker.dart';
