@@ -79,19 +79,28 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                 // Summary Cards
                 BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
-                    double totalSales = 0;
+                    double myPurchase = 0;
+                    double mySales = 0;
+                    double myCollection = 0;
+                    double myPending = 0;
+                    double purchaseBillPaid = 0;
+                    double purchaseBillDue = 0;
                     double totalCommission = 0;
-                    double totalPaidToAdmin = 0;
-                    double totalOwedToAdmin = 0;
                     
                     if (state is OrdersLoaded) {
                       for (var order in state.orders) {
                         if (order.isSupplyOrder && order.targetUserId == user.uid) {
-                          totalPaidToAdmin += order.paidAmount;
-                          totalOwedToAdmin += order.remainingAmount;
+                          // Purchases from Admin
+                          myPurchase += order.finalAmount;
+                          purchaseBillPaid += order.paidAmount;
+                          purchaseBillDue += order.remainingAmount;
                         } else if (!order.isSupplyOrder && order.createdBy == user.uid) {
-                          totalSales += order.finalAmount;
-                          // Commission calculation: (Actual Sell Price - Distributor Cost) * Quantity
+                          // Sales to Retail Customers
+                          mySales += order.finalAmount;
+                          myCollection += order.paidAmount;
+                          myPending += order.remainingAmount;
+                          
+                          // Commission calculation
                           for (var item in order.items) {
                             if (item.pricePerCrate > item.distributorCost && item.distributorCost > 0) {
                               totalCommission += ((item.pricePerCrate - item.distributorCost) * item.quantity);
@@ -100,38 +109,60 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
                         }
                       }
                     }
+                    
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Text('My Retail Business', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            _summaryCard('My Sales', '₹${totalSales.toStringAsFixed(0)}', Icons.payments, Colors.green),
-                            const SizedBox(width: 16),
-                            _summaryCard('My Commission', '₹${totalCommission.toStringAsFixed(0)}', Icons.account_balance, Colors.indigo),
+                            Expanded(child: _summaryCard('My Sales', '₹${mySales.toStringAsFixed(0)}', Icons.point_of_sale, Colors.green)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _summaryCard('My Collection', '₹${myCollection.toStringAsFixed(0)}', Icons.account_balance_wallet, Colors.teal)),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            _summaryCard('Paid to Admin', '₹${totalPaidToAdmin.toStringAsFixed(0)}', Icons.check_circle, Colors.teal),
-                            const SizedBox(width: 16),
-                            _summaryCard('Owed to Admin', '₹${totalOwedToAdmin.toStringAsFixed(0)}', Icons.warning_amber_rounded, Colors.redAccent),
+                            Expanded(child: _summaryCard('My Pending', '₹${myPending.toStringAsFixed(0)}', Icons.pending_actions, Colors.orange)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _summaryCard('My Commission', '₹${totalCommission.toStringAsFixed(0)}', Icons.stars, Colors.indigo)),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        BlocBuilder<InventoryBloc, InventoryState>(
-                          builder: (context, invState) {
-                            int totalCrates = 0;
-                            if (invState is InventoryLoaded) {
-                              totalCrates = invState.inventory.fold(0, (sum, i) => sum + i.stockCount);
-                            }
-                            return _summaryCard('Current Stock', '$totalCrates Crates', Icons.inventory, Colors.orange, isFullWidth: true);
-                          },
+                        const SizedBox(height: 24),
+                        const Text('My Supply Purchases (From Admin)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: _summaryCard('Total Purchase', '₹${myPurchase.toStringAsFixed(0)}', Icons.local_shipping, Colors.blueGrey)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _summaryCard('Bill Paid', '₹${purchaseBillPaid.toStringAsFixed(0)}', Icons.check_circle, Colors.blue)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: _summaryCard('Bill Due', '₹${purchaseBillDue.toStringAsFixed(0)}', Icons.warning_amber_rounded, Colors.redAccent)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: BlocBuilder<InventoryBloc, InventoryState>(
+                                builder: (context, invState) {
+                                  int totalCrates = 0;
+                                  if (invState is InventoryLoaded) {
+                                    totalCrates = invState.inventory.fold(0, (sum, i) => sum + i.stockCount);
+                                  }
+                                  return _summaryCard('Stock', '$totalCrates Crates', Icons.inventory, Colors.deepOrange);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         if (state is OrdersLoaded && state.orders.isNotEmpty) ...[
                           const SizedBox(height: 20),
-                          SalesTrendGraph(orders: state.orders),
+                          SalesTrendGraph(orders: state.orders.where((o) => !o.isSupplyOrder && o.createdBy == user.uid).toList()),
                           const SizedBox(height: 16),
-                          CrateSalesBreakdown(orders: state.orders),
+                          CrateSalesBreakdown(orders: state.orders.where((o) => !o.isSupplyOrder && o.createdBy == user.uid).toList()),
                         ],
                       ],
                     );
