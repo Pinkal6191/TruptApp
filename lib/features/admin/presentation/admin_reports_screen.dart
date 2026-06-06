@@ -542,6 +542,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
+                              isExpanded: true,
                               value: _reportType,
                               decoration: InputDecoration(
                                 labelText: 'Report Type',
@@ -549,11 +550,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
                               items: const [
-                                DropdownMenuItem(value: 'all', child: Text('All Orders (Summary)')),
-                                DropdownMenuItem(value: 'order_wise', child: Text('Order-wise (GST Detailed)')),
-                                DropdownMenuItem(value: 'partner', child: Text('Partner-wise')),
-                                DropdownMenuItem(value: 'distributor', child: Text('Distributor-wise')),
-                                DropdownMenuItem(value: 'customer', child: Text('Customer-wise')),
+                                DropdownMenuItem(value: 'all', child: Text('All Orders (Summary)', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'order_wise', child: Text('Order-wise (GST)', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'partner', child: Text('Partner-wise', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'distributor', child: Text('Distributor-wise', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'customer', child: Text('Customer-wise', overflow: TextOverflow.ellipsis)),
                               ],
                               onChanged: (val) => setState(() => _reportType = val!),
                             ),
