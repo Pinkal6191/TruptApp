@@ -31,6 +31,7 @@ class _CustomPriceScreenState extends State<CustomPriceScreen> {
     } else {
       _localCustomPrices = {};
     }
+    context.read<ProductBloc>().add(LoadProducts());
   }
 
   Future<void> _savePrices(UserModel user) async {

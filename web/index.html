@@ -397,7 +397,8 @@
 
         // Hard reload from server
         console.log('[App Version] Hard-reloading page...');
-        window.location.reload(true);
+        const currentUrl = window.location.href.split('?')[0];
+        window.location.href = currentUrl + '?v=' + new Date().getTime();
       };
 
       // Run check on startup
@@ -423,7 +424,7 @@
       }, 60000);
 
       // Dynamic loading of flutter_bootstrap.js with cache-busting version query parameter
-      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+5' : RUNNING_VERSION;
+      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+6' : RUNNING_VERSION;
       const script = document.createElement('script');
       script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(loadedVersion);
       script.async = true;
