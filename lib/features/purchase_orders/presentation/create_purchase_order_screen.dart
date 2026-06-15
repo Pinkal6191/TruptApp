@@ -22,6 +22,19 @@ class _CreatePurchaseOrderScreenState extends State<CreatePurchaseOrderScreen> {
   final _contactNumberCtrl = TextEditingController();
   final _paymentTermsCtrl = TextEditingController(text: '(Payment terms- Prep)');
 
+  @override
+  void initState() {
+    super.initState();
+    // Auto-generate PO Number: PO-YYMMDD-HHMM
+    final now = DateTime.now();
+    final year = now.year.toString().substring(2);
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    _poNumberCtrl.text = 'PO-$year$month$day-$hour$minute';
+  }
+
   List<PurchaseOrderItemModel> _items = [];
 
   void _addItem() {
