@@ -6,7 +6,8 @@ import '../../../core/models/expense_model.dart';
 import '../../../core/services/settings_service.dart';
 
 class AddPartnerExpenseScreen extends StatefulWidget {
-  const AddPartnerExpenseScreen({Key? key}) : super(key: key);
+  final ExpenseModel? existingExpense;
+  const AddPartnerExpenseScreen({Key? key, this.existingExpense}) : super(key: key);
 
   @override
   State<AddPartnerExpenseScreen> createState() => _AddPartnerExpenseScreenState();
@@ -30,6 +31,16 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
     super.initState();
     _loadSettings();
     _distanceCtrl.addListener(_calculateDeliveryAmount);
+
+    if (widget.existingExpense != null) {
+      _selectedType = widget.existingExpense!.type;
+      _amountCtrl.text = widget.existingExpense!.amount.toString();
+      _descCtrl.text = widget.existingExpense!.description ?? '';
+      _selectedDate = widget.existingExpense!.date;
+      if (widget.existingExpense!.distanceKm != null) {
+        _distanceCtrl.text = widget.existingExpense!.distanceKm.toString();
+      }
+    }
   }
 
   @override
@@ -72,7 +83,11 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
       final amount = double.parse(_amountCtrl.text);
       final distance = _selectedType == 'Delivery' ? double.tryParse(_distanceCtrl.text) : null;
 
-      final expenseRef = FirebaseFirestore.instance.collection('expenses').doc();
+      final isEdit = widget.existingExpense != null;
+      final expenseRef = isEdit 
+          ? FirebaseFirestore.instance.collection('expenses').doc(widget.existingExpense!.id)
+          : FirebaseFirestore.instance.collection('expenses').doc();
+          
       final expense = ExpenseModel(
         id: expenseRef.id,
         type: _selectedType,
@@ -82,13 +97,17 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
         userId: user.uid,
         userName: userName,
         distanceKm: distance,
-        status: 'Pending',
+        status: isEdit ? widget.existingExpense!.status : 'Pending',
       );
 
-      await expenseRef.set(expense.toMap());
+      if (isEdit) {
+        await expenseRef.update(expense.toMap());
+      } else {
+        await expenseRef.set(expense.toMap());
+      }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense submitted for approval!')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'Expense updated successfully!' : 'Expense submitted for approval!')));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -104,7 +123,7 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Expense', style: TextStyle(color: Colors.white)),
+        title: Text(widget.existingExpense != null ? 'Edit Expense' : 'Add Expense', style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.teal,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -224,7 +243,10 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
                   ),
                   child: _isLoading 
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Submit Expense', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      : Text(
+                          widget.existingExpense != null ? 'Update Expense' : 'Submit Expense',
+                          style: const TextStyle(fontSize: 18, color: Colors.white),
+                        ),
                 ),
               ),
             ],

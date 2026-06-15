@@ -116,12 +116,33 @@ class _ExpenseCard extends StatelessWidget {
 
   const _ExpenseCard({Key? key, required this.expense}) : super(key: key);
 
+  void _deleteExpense(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Expense'),
+        content: const Text('Are you sure you want to delete this expense?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('expenses').doc(expense.id).delete();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense deleted')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM dd, yyyy - hh:mm a');
     
     Color statusColor = Colors.orange;
-    if (expense.status == 'Approved') statusColor = Colors.green;
+    if (expense.status == 'Approved' || expense.status == 'Settled') statusColor = Colors.green;
     if (expense.status == 'Rejected') statusColor = Colors.red;
 
     return Card(
@@ -137,17 +158,36 @@ class _ExpenseCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Type: ${expense.type}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor),
-                  ),
-                  child: Text(
-                    expense.status,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusColor),
+                      ),
+                      child: Text(
+                        expense.status,
+                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                    if (expense.status == 'Pending')
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, size: 20),
+                        onSelected: (value) {
+                          if (value == 'Edit') {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => AddPartnerExpenseScreen(existingExpense: expense)));
+                          } else if (value == 'Delete') {
+                            _deleteExpense(context);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'Edit', child: Text('Edit')),
+                          const PopupMenuItem(value: 'Delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                  ],
                 ),
               ],
             ),
