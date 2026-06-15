@@ -5,6 +5,7 @@ import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../orders/presentation/create_order_screen.dart';
 import '../../orders/presentation/order_history_screen.dart';
+import 'partner_expenses_list_screen.dart';
 import '../../admin/presentation/private_label_customers_screen.dart';
 import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
@@ -232,6 +233,14 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                   icon: Icons.history,
                   color: const Color(0xFF64748B),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen())).then((_) => RouteTracker.clearRoute()),
+                ),
+                const SizedBox(height: 12),
+                _actionCard(
+                  title: 'My Expenses',
+                  subtitle: 'Log and track travel and delivery expenses',
+                  icon: Icons.receipt_long,
+                  color: Colors.teal,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PartnerExpensesListScreen())).then((_) => RouteTracker.clearRoute()),
                 ),
                 const SizedBox(height: 12),
                 _actionCard(

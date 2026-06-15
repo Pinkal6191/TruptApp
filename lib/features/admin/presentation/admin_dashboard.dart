@@ -22,6 +22,8 @@ import 'product_management_screen.dart';
 import 'admin_reports_screen.dart';
 import 'user_management_screen.dart';
 import 'customer_list_screen.dart';
+import 'admin_settings_screen.dart';
+import 'admin_partner_expenses_screen.dart';
 import '../../inventory/presentation/raw_materials_screen.dart';
 import '../../inventory/presentation/production_logs_screen.dart';
 import '../../inventory/presentation/factory_inventory_screen.dart';
@@ -637,6 +639,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     subtitle: const Text('View repeat customers and export list'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerListScreen())).then((_) => RouteTracker.clearRoute()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.indigo, child: Icon(Icons.receipt_long, color: Colors.white)),
+                    title: const Text('Partner Expenses'),
+                    subtitle: const Text('Review and approve partner delivery expenses'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPartnerExpensesScreen())).then((_) => RouteTracker.clearRoute()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.settings, color: Colors.white)),
+                    title: const Text('System Settings'),
+                    subtitle: const Text('Configure global rates and policies'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminSettingsScreen())).then((_) => RouteTracker.clearRoute()),
                   ),
                 ),
                 const SizedBox(height: 12),
