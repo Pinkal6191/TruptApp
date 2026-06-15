@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../../core/models/expense_model.dart';
 import '../../../core/services/settings_service.dart';
 
@@ -22,6 +23,7 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
   
   bool _isLoading = false;
   double _deliveryRate = 10.0;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -75,7 +77,7 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
         id: expenseRef.id,
         type: _selectedType,
         amount: amount,
-        date: DateTime.now(),
+        date: _selectedDate,
         description: _descCtrl.text.trim(),
         userId: user.uid,
         userName: userName,
@@ -113,6 +115,37 @@ class _AddPartnerExpenseScreenState extends State<AddPartnerExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('Expense Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() => _selectedDate = picked);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(DateFormat('MMM dd, yyyy').format(_selectedDate), style: const TextStyle(fontSize: 16)),
+                      const Icon(Icons.calendar_today, color: Colors.teal),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               const Text('Expense Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
