@@ -28,7 +28,6 @@ class PartnerExpensesListScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('expenses')
             .where('userId', isEqualTo: user.uid)
-            .orderBy('date', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -41,17 +40,73 @@ class PartnerExpensesListScreen extends StatelessWidget {
           final expenses = snapshot.data!.docs
               .map((doc) => ExpenseModel.fromFirestore(doc))
               .toList();
+          
+          // Sort locally to avoid needing a Firestore Composite Index
+          expenses.sort((a, b) => b.date.compareTo(a.date));
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: expenses.length,
-            itemBuilder: (context, index) {
-              final expense = expenses[index];
-              return _ExpenseCard(expense: expense);
-            },
+          double total = 0;
+          double approved = 0;
+          double pending = 0;
+          
+          for (var e in expenses) {
+            total += e.amount;
+            if (e.status == 'Approved' || e.status == 'Settled') approved += e.amount;
+            if (e.status == 'Pending') pending += e.amount;
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.teal.shade50,
+                child: Column(
+                  children: [
+                    const Text('Expense Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _SummaryStat('Total', total, Colors.blue),
+                        _SummaryStat('Approved', approved, Colors.green),
+                        _SummaryStat('Pending', pending, Colors.orange),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: expenses.length,
+                  itemBuilder: (context, index) {
+                    final expense = expenses[index];
+                    return _ExpenseCard(expense: expense);
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  final String label;
+  final double amount;
+  final Color color;
+
+  const _SummaryStat(this.label, this.amount, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text('₹${amount.toStringAsFixed(0)}', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
+      ],
     );
   }
 }

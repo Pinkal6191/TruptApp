@@ -17,8 +17,6 @@ class AdminPartnerExpensesScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('expenses')
-            .where('userId', isNull: false)
-            .orderBy('date', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -28,20 +26,81 @@ class AdminPartnerExpensesScreen extends StatelessWidget {
             return const Center(child: Text('No partner expenses found.'));
           }
 
-          final expenses = snapshot.data!.docs
+          var expenses = snapshot.data!.docs
               .map((doc) => ExpenseModel.fromFirestore(doc))
+              .where((e) => e.userId != null)
               .toList();
+              
+          expenses.sort((a, b) => b.date.compareTo(a.date));
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: expenses.length,
-            itemBuilder: (context, index) {
-              final expense = expenses[index];
-              return _ExpenseCard(expense: expense);
-            },
+          double totalAmt = 0;
+          double pendingAmt = 0;
+          double settledAmt = 0;
+          int totalCount = expenses.length;
+          int pendingCount = 0;
+          
+          for (var e in expenses) {
+            totalAmt += e.amount;
+            if (e.status == 'Pending') {
+               pendingAmt += e.amount;
+               pendingCount++;
+            }
+            if (e.status == 'Approved' || e.status == 'Settled') settledAmt += e.amount;
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+                child: Column(
+                  children: [
+                    const Text('All Partners Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _SummaryStat('Total ($totalCount)', totalAmt, Colors.blue),
+                        _SummaryStat('Pending ($pendingCount)', pendingAmt, Colors.orange),
+                        _SummaryStat('Settled', settledAmt, Colors.green),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: expenses.length,
+                  itemBuilder: (context, index) {
+                    final expense = expenses[index];
+                    return _ExpenseCard(expense: expense);
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  final String label;
+  final double amount;
+  final Color color;
+
+  const _SummaryStat(this.label, this.amount, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text('₹${amount.toStringAsFixed(0)}', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
+      ],
     );
   }
 }
