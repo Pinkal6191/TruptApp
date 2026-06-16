@@ -64,14 +64,49 @@ class CustomerRepository {
   }
 
   /// Updates a customer's contact/profile details (name, mobile, address, gst).
-  /// Does NOT touch totalOrders or totalAmountSpent.
+  /// Also cascades these updates to all existing orders for this customer.
   Future<void> updateCustomer(CustomerModel customer) async {
-    await _firestore.collection('customers').doc(customer.id).update({
+    final docRef = _firestore.collection('customers').doc(customer.id);
+    
+    // 1. Fetch old customer to find matching orders
+    final docSnapshot = await docRef.get();
+    if (!docSnapshot.exists) return;
+    final oldData = docSnapshot.data()!;
+    final oldShopName = oldData['shopName']?.toString().trim() ?? '';
+    final oldMobile = oldData['mobileNumber']?.toString().trim() ?? '';
+
+    // 2. Update the customer document
+    await docRef.update({
       'shopName': customer.shopName.trim(),
       'mobileNumber': customer.mobileNumber.trim(),
       'address': customer.address.trim(),
       'gstNumber': customer.gstNumber.trim(),
     });
+
+    // 3. Update all past orders linked to this customer
+    if (oldShopName.isNotEmpty || oldMobile.isNotEmpty) {
+      Query query = _firestore.collection('orders');
+      if (oldShopName.isNotEmpty) {
+        query = query.where('shopName', isEqualTo: oldShopName);
+      }
+      if (oldMobile.isNotEmpty) {
+        query = query.where('customerMobile', isEqualTo: oldMobile);
+      }
+
+      final orderSnapshots = await query.get();
+      if (orderSnapshots.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (var orderDoc in orderSnapshots.docs) {
+          batch.update(orderDoc.reference, {
+            'shopName': customer.shopName.trim(),
+            'customerMobile': customer.mobileNumber.trim(),
+            'customerAddress': customer.address.trim(),
+            'customerGstNumber': customer.gstNumber.trim(),
+          });
+        }
+        await batch.commit();
+      }
+    }
   }
 
   /// Deletes a customer document entirely.
