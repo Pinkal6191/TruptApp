@@ -118,6 +118,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
+  Widget _summaryColumn(String title, double amount, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text('₹${amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -199,6 +210,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
               return true;
             }).toList();
+
+            double totalOrderAmount = 0;
+            double totalPartialPaid = 0;
+            double totalDueAmount = 0;
+            
+            if (_searchQuery.isNotEmpty && filteredOrders.isNotEmpty) {
+              for (var o in filteredOrders) {
+                totalOrderAmount += o.finalAmount;
+                totalPartialPaid += o.paidAmount;
+                totalDueAmount += o.remainingAmount;
+              }
+            }
 
             return Column(
               children: [
@@ -354,6 +377,27 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ),
                 ),
+                if (_searchQuery.isNotEmpty && filteredOrders.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade100),
+                        boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.05), blurRadius: 10)],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _summaryColumn('Total Orders', totalOrderAmount, Colors.blue.shade800),
+                          _summaryColumn('Paid/Partial', totalPartialPaid, Colors.green.shade700),
+                          _summaryColumn('Total Due', totalDueAmount, Colors.red.shade700),
+                        ],
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: filteredOrders.isEmpty
                       ? const Center(child: Text('No matching orders found.'))
