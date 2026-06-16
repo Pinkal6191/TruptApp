@@ -617,190 +617,202 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 const SizedBox(height: 32),
                 const Text('Order Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text('Edit Order Details'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E3A8A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CreateOrderScreen(
-                            isRetailOrder: !_currentOrder.isSupplyOrder,
-                            existingOrder: _currentOrder,
-                          ),
-                        ),
-                      ).then((_) {
-                        RouteTracker.saveRoute('order_details', data: {'orderId': _currentOrder.id});
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (isMobile) ...[
+                
+                if (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid') ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.local_shipping),
-                      label: const Text('Mark Dispatched'),
+                      icon: const Icon(Icons.edit_note),
+                      label: const Text('Edit Order Details'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
+                        backgroundColor: const Color(0xFF1E3A8A),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: _currentOrder.deliveryStatus != 'Dispatched' && _currentOrder.deliveryStatus != 'Delivered'
-                          ? () => _updateDeliveryStatus('Dispatched')
-                          : null,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CreateOrderScreen(
+                              isRetailOrder: !_currentOrder.isSupplyOrder,
+                              existingOrder: _currentOrder,
+                            ),
+                          ),
+                        ).then((_) {
+                          RouteTracker.saveRoute('order_details', data: {'orderId': _currentOrder.id});
+                        });
+                      },
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle),
-                      label: const Text('Mark Delivered'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      onPressed: _currentOrder.deliveryStatus != 'Delivered'
-                          ? () => _updateDeliveryStatus('Delivered')
-                          : null,
-                    ),
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.local_shipping),
-                          label: const Text('Mark Dispatched'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3B82F6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: _currentOrder.deliveryStatus != 'Dispatched' && _currentOrder.deliveryStatus != 'Delivered'
-                              ? () => _updateDeliveryStatus('Dispatched')
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.check_circle),
-                          label: const Text('Mark Delivered'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: _currentOrder.deliveryStatus != 'Delivered'
-                              ? () => _updateDeliveryStatus('Delivered')
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
-                const SizedBox(height: 12),
-                if (_currentOrder.paymentStatus == 'Paid') ...[
+                
+                if (_currentOrder.deliveryStatus != 'Delivered') ...[
+                  if (isMobile) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.local_shipping),
+                        label: const Text('Mark Dispatched'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: _currentOrder.deliveryStatus != 'Dispatched' && _currentOrder.deliveryStatus != 'Delivered'
+                            ? () => _updateDeliveryStatus('Dispatched')
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Mark Delivered'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: _currentOrder.deliveryStatus != 'Delivered'
+                            ? () => _updateDeliveryStatus('Delivered')
+                            : null,
+                      ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.local_shipping),
+                            label: const Text('Mark Dispatched'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3B82F6),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: _currentOrder.deliveryStatus != 'Dispatched' && _currentOrder.deliveryStatus != 'Delivered'
+                                ? () => _updateDeliveryStatus('Dispatched')
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.check_circle),
+                            label: const Text('Mark Delivered'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: _currentOrder.deliveryStatus != 'Delivered'
+                                ? () => _updateDeliveryStatus('Delivered')
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                ],
+                
+                if (!(_currentOrder.deliveryStatus == 'Delivered' && _currentOrder.paymentStatus == 'Paid')) ...[
+                  if (_currentOrder.paymentStatus == 'Paid') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.money_off),
+                        label: const Text('Mark Unpaid'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade400,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () {
+                          final userId = isAdmin ? null : authState.user.uid;
+                          final userName = isAdmin ? null : authState.user.name;
+                          context.read<OrderBloc>().add(UpdateOrderPayment(
+                                orderId: _currentOrder.id,
+                                paidAmount: 0.0,
+                                paymentStatus: 'Pending',
+                                userId: userId,
+                                userName: userName,
+                              ));
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Order marked as Pending (Unpaid)')),
+                          );
+                        },
+                      ),
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.payments),
+                        label: const Text('Record Payment'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF59E0B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: _recordPayment,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                ],
+
+                if (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid') ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.money_off),
-                      label: const Text('Mark Unpaid'),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Delete Order'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade400,
+                        backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: () {
-                        final userId = isAdmin ? null : authState.user.uid;
-                        final userName = isAdmin ? null : authState.user.name;
-                        context.read<OrderBloc>().add(UpdateOrderPayment(
-                              orderId: _currentOrder.id,
-                              paidAmount: 0.0,
-                              paymentStatus: 'Pending',
-                              userId: userId,
-                              userName: userName,
-                            ));
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Order marked as Pending (Unpaid)')),
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Delete Order'),
+                            content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
+                            actions: [
+                              TextButton(
+                                child: const Text('Cancel'),
+                                onPressed: () => Navigator.pop(dialogContext),
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                onPressed: () {
+                                  final userId = isAdmin ? null : authState.user.uid;
+                                  final userName = isAdmin ? null : authState.user.name;
+                                  context.read<OrderBloc>().add(DeleteOrder(
+                                        order: _currentOrder,
+                                        userId: userId,
+                                        userName: userName,
+                                      ));
+                                  Navigator.pop(dialogContext); // Close dialog
+                                  Navigator.pop(context); // Go back to order history screen
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Order deleted successfully!')),
+                                  );
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
                   ),
-                ] else ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.payments),
-                      label: const Text('Record Payment'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF59E0B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      onPressed: _recordPayment,
-                    ),
-                  ),
                 ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Delete Order'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          title: const Text('Delete Order'),
-                          content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
-                          actions: [
-                            TextButton(
-                              child: const Text('Cancel'),
-                              onPressed: () => Navigator.pop(dialogContext),
-                            ),
-                            TextButton(
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
-                              onPressed: () {
-                                final userId = isAdmin ? null : authState.user.uid;
-                                final userName = isAdmin ? null : authState.user.name;
-                                context.read<OrderBloc>().add(DeleteOrder(
-                                      order: _currentOrder,
-                                      userId: userId,
-                                      userName: userName,
-                                    ));
-                                Navigator.pop(dialogContext); // Close dialog
-                                Navigator.pop(context); // Go back to order history screen
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Order deleted successfully!')),
-                                );
-                              },
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
                 const SizedBox(height: 32),
               ]
             ],

@@ -539,45 +539,46 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       Row(
                         children: [
                           // Delete Button
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
-                            tooltip: 'Delete Order',
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              final authState = context.read<AuthBloc>().state;
-                              final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                              final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                              showDialog(
-                                context: context,
-                                builder: (dialogContext) => AlertDialog(
-                                  title: const Text('Delete Order'),
-                                  content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
-                                  actions: [
-                                    TextButton(
-                                      child: const Text('Cancel'),
-                                      onPressed: () => Navigator.pop(dialogContext),
-                                    ),
-                                    TextButton(
-                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                      onPressed: () {
-                                        context.read<OrderBloc>().add(DeleteOrder(
-                                              order: order,
-                                              userId: userId,
-                                              userName: userName,
-                                            ));
-                                        Navigator.pop(dialogContext);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Deleting order...')),
-                                        );
-                                      },
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                          if (order.deliveryStatus != 'Delivered' && order.paymentStatus != 'Paid')
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Delete Order',
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                final authState = context.read<AuthBloc>().state;
+                                final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                                final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogContext) => AlertDialog(
+                                    title: const Text('Delete Order'),
+                                    content: const Text('Are you sure you want to delete this order? This will also reverse all stock changes associated with this order.'),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text('Cancel'),
+                                        onPressed: () => Navigator.pop(dialogContext),
+                                      ),
+                                      TextButton(
+                                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                        onPressed: () {
+                                          context.read<OrderBloc>().add(DeleteOrder(
+                                                order: order,
+                                                userId: userId,
+                                                userName: userName,
+                                              ));
+                                          Navigator.pop(dialogContext);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Deleting order...')),
+                                          );
+                                        },
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           const Spacer(),
                           if (order.deliveryStatus != 'Delivered')
                             TextButton.icon(
