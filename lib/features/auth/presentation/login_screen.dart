@@ -179,9 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     builder: (context, state) {
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(24),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                          child: Container(
+                        child: Container(
                             padding: const EdgeInsets.all(28),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.03),
@@ -374,7 +372,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                           ),
-                        ),
                       );
                     },
                   ),
