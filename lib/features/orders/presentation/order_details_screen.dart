@@ -618,7 +618,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 const Text('Order Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                 const SizedBox(height: 12),
                 
-                if (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid') ...[
+                if (isAdmin || (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid')) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -766,7 +766,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   const SizedBox(height: 12),
                 ],
 
-                if (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid') ...[
+                if (isAdmin || (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid')) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

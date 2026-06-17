@@ -85,25 +85,59 @@ class CustomerRepository {
 
     // 3. Update all past orders linked to this customer
     if (oldShopName.isNotEmpty || oldMobile.isNotEmpty) {
-      Query query = _firestore.collection('orders');
+      final batch = _firestore.batch();
+      int batchCount = 0;
+
+      // Update Orders
+      Query orderQuery = _firestore.collection('orders');
       if (oldShopName.isNotEmpty) {
-        query = query.where('shopName', isEqualTo: oldShopName);
+        orderQuery = orderQuery.where('shopName', isEqualTo: oldShopName);
       }
       if (oldMobile.isNotEmpty) {
-        query = query.where('customerMobile', isEqualTo: oldMobile);
+        orderQuery = orderQuery.where('customerMobile', isEqualTo: oldMobile);
+      }
+      final orderSnapshots = await orderQuery.get();
+      for (var doc in orderSnapshots.docs) {
+        batch.update(doc.reference, {
+          'shopName': customer.shopName.trim(),
+          'customerMobile': customer.mobileNumber.trim(),
+          'customerAddress': customer.address.trim(),
+          'customerGstNumber': customer.gstNumber.trim(),
+        });
+        batchCount++;
       }
 
-      final orderSnapshots = await query.get();
-      if (orderSnapshots.docs.isNotEmpty) {
-        final batch = _firestore.batch();
-        for (var orderDoc in orderSnapshots.docs) {
-          batch.update(orderDoc.reference, {
-            'shopName': customer.shopName.trim(),
-            'customerMobile': customer.mobileNumber.trim(),
-            'customerAddress': customer.address.trim(),
-            'customerGstNumber': customer.gstNumber.trim(),
-          });
-        }
+      // Update Quotations
+      Query quotationQuery = _firestore.collection('quotations');
+      if (oldShopName.isNotEmpty) {
+        quotationQuery = quotationQuery.where('customerName', isEqualTo: oldShopName);
+      }
+      if (oldMobile.isNotEmpty) {
+        quotationQuery = quotationQuery.where('customerMobile', isEqualTo: oldMobile);
+      }
+      final quotationSnapshots = await quotationQuery.get();
+      for (var doc in quotationSnapshots.docs) {
+        batch.update(doc.reference, {
+          'customerName': customer.shopName.trim(),
+          'customerMobile': customer.mobileNumber.trim(),
+          'customerAddress': customer.address.trim(),
+        });
+        batchCount++;
+      }
+
+      // Update Contracts
+      final contractQuery = _firestore.collection('contracts').where('customerId', isEqualTo: customer.id);
+      final contractSnapshots = await contractQuery.get();
+      for (var doc in contractSnapshots.docs) {
+        batch.update(doc.reference, {
+          'customerName': customer.shopName.trim(),
+          'customerContact': customer.mobileNumber.trim(),
+          'customerAddress': customer.address.trim(),
+        });
+        batchCount++;
+      }
+
+      if (batchCount > 0) {
         await batch.commit();
       }
     }
