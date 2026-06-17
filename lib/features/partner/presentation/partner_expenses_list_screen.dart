@@ -27,7 +27,6 @@ class PartnerExpensesListScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('expenses')
-            .where('userId', isEqualTo: user.uid)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -39,6 +38,7 @@ class PartnerExpensesListScreen extends StatelessWidget {
 
           final expenses = snapshot.data!.docs
               .map((doc) => ExpenseModel.fromFirestore(doc))
+              .where((e) => e.userId != null)
               .toList();
           
           // Sort locally to avoid needing a Firestore Composite Index
@@ -80,7 +80,7 @@ class PartnerExpensesListScreen extends StatelessWidget {
                   itemCount: expenses.length,
                   itemBuilder: (context, index) {
                     final expense = expenses[index];
-                    return _ExpenseCard(expense: expense);
+                    return _ExpenseCard(expense: expense, currentUserId: user.uid);
                   },
                 ),
               ),
@@ -113,8 +113,9 @@ class _SummaryStat extends StatelessWidget {
 
 class _ExpenseCard extends StatelessWidget {
   final ExpenseModel expense;
+  final String currentUserId;
 
-  const _ExpenseCard({Key? key, required this.expense}) : super(key: key);
+  const _ExpenseCard({Key? key, required this.expense, required this.currentUserId}) : super(key: key);
 
   void _deleteExpense(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -157,7 +158,13 @@ class _ExpenseCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Type: ${expense.type}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Type: ${expense.type}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    Text(expense.userName ?? 'Unknown Partner', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 14)),
+                  ],
+                ),
                 Row(
                   children: [
                     Container(
@@ -172,7 +179,7 @@ class _ExpenseCard extends StatelessWidget {
                         style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ),
-                    if (expense.status == 'Pending')
+                    if (expense.status == 'Pending' && expense.userId == currentUserId)
                       PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert, size: 20),
                         onSelected: (value) {
