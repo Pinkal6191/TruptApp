@@ -24,6 +24,7 @@ import 'user_management_screen.dart';
 import 'customer_list_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_partner_expenses_screen.dart';
+import 'admin_backup_screen.dart';
 import '../../inventory/presentation/raw_materials_screen.dart';
 import '../../inventory/presentation/production_logs_screen.dart';
 import '../../inventory/presentation/factory_inventory_screen.dart';
@@ -612,6 +613,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 const SizedBox(height: 16),
                 
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.blue, child: Icon(Icons.cloud_download, color: Colors.white)),
+                    title: const Text('Data Backup & Export'),
+                    subtitle: const Text('Download a complete backup of all database records'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminBackupScreen())).then((_) => RouteTracker.clearRoute()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 BlocBuilder<ExpenseBloc, ExpenseState>(
                   builder: (context, state) {
                     double totalExpense = 0.0;
