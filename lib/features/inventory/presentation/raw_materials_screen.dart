@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/raw_material_model.dart';
+import '../../../core/models/expense_model.dart';
 import '../../../core/utils/route_tracker.dart';
 import '../repository/production_repository.dart';
+import '../../expenses/repository/expense_repository.dart';
 
 class RawMaterialsScreen extends StatefulWidget {
   const RawMaterialsScreen({super.key});
@@ -12,6 +14,7 @@ class RawMaterialsScreen extends StatefulWidget {
 
 class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
   final ProductionRepository _productionRepository = ProductionRepository();
+  final ExpenseRepository _expenseRepository = ExpenseRepository();
 
   @override
   void initState() {
@@ -24,6 +27,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
     final nameController = TextEditingController(text: material?.name ?? '');
     final minReorderController = TextEditingController(text: material != null ? material.minReorderLevel.toString() : '10.0');
     final stockController = TextEditingController(text: material != null ? material.stockCount.toString() : '0.0');
+    final purchaseCostController = TextEditingController();
     String selectedUnit = material?.unit ?? 'kg';
 
     final List<String> commonUnits = ['kg', 'liters', 'pcs', 'bags', 'grams', 'ml'];
@@ -97,14 +101,33 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                     ),
                     if (!isEditing) ...[
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: stockController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Initial Stock Count',
-                          hintText: 'e.g. 100.0',
-                          border: OutlineInputBorder(),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: stockController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Initial Stock Count',
+                                hintText: 'e.g. 100.0',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextField(
+                              controller: purchaseCostController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Total Cost (₹)',
+                                hintText: 'Optional',
+                                border: OutlineInputBorder(),
+                                prefixText: '₹ ',
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -121,6 +144,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                           final name = nameController.text.trim();
                           final minReorder = double.tryParse(minReorderController.text) ?? 0.0;
                           final stock = double.tryParse(stockController.text) ?? 0.0;
+                          final cost = double.tryParse(purchaseCostController.text) ?? 0.0;
 
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -148,6 +172,18 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                                 minReorderLevel: minReorder,
                               );
                               await _productionRepository.addRawMaterial(newItem);
+
+                              // Log expense if provided
+                              if (cost > 0) {
+                                final expense = ExpenseModel(
+                                  id: '',
+                                  title: 'Raw Material Purchase: $name ($stock $selectedUnit)',
+                                  amount: cost,
+                                  date: DateTime.now(),
+                                  category: 'Raw Materials',
+                                );
+                                await _expenseRepository.addExpense(expense);
+                              }
                             }
                             if (context.mounted) {
                               Navigator.pop(context);
@@ -182,6 +218,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
 
   void _showAdjustStockModal(RawMaterialModel material) {
     final amountController = TextEditingController();
+    final purchaseCostController = TextEditingController();
     bool isAdding = true;
 
     showDialog(
@@ -236,6 +273,19 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                       border: const OutlineInputBorder(),
                     ),
                   ),
+                  if (isAdding) ...[
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: purchaseCostController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Total Cost (₹)',
+                        hintText: 'Optional Purchase Cost',
+                        border: OutlineInputBorder(),
+                        prefixText: '₹ ',
+                      ),
+                    ),
+                  ],
                 ],
               ),
               actions: [
@@ -250,6 +300,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                   ),
                   onPressed: () async {
                     final qty = double.tryParse(amountController.text) ?? 0.0;
+                    final cost = double.tryParse(purchaseCostController.text) ?? 0.0;
                     if (qty <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Please enter a valid quantity'), backgroundColor: Colors.red),
@@ -260,6 +311,19 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                     try {
                       final adjustment = isAdding ? qty : -qty;
                       await _productionRepository.updateRawMaterialStock(material.id, adjustment);
+                      
+                      // Log expense if cost provided
+                      if (isAdding && cost > 0) {
+                        final expense = ExpenseModel(
+                          id: '',
+                          title: 'Restock: ${material.name} ($qty ${material.unit})',
+                          amount: cost,
+                          date: DateTime.now(),
+                          category: 'Raw Materials',
+                        );
+                        await _expenseRepository.addExpense(expense);
+                      }
+
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
