@@ -326,7 +326,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       }
     }
 
-    String csvData = const ListToCsvConverter().convert(rows);
+    String csvData = Csv().encode(rows);
     final bytes = utf8.encode(csvData);
     final fileName = 'Business_Report_${DateTime.now().millisecondsSinceEpoch}.csv';
     
@@ -339,7 +339,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   Future<void> _exportPdf(List<Map<String, dynamic>> data, double totalSales) async {
     final pdf = pw.Document();
     
-    List<List<String>> _buildPdfDataRows(List<Map<String, dynamic>> data) {
+    List<List<dynamic>> _buildPdfDataRows(List<Map<String, dynamic>> data) {
       if (_reportType == 'expense') {
         final expenseState = context.read<ExpenseBloc>().state;
         if (expenseState is ExpensesLoaded) {
@@ -503,7 +503,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ]);
       }
       
-      String csvData = const ListToCsvConverter().convert(rows);
+      String csvData = Csv().encode(rows);
       final bytes = utf8.encode(csvData);
       final fileName = 'Customer_Directory_${DateTime.now().millisecondsSinceEpoch}.csv';
       
@@ -717,7 +717,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 // Data List
                 Expanded(
                   child: _reportType == 'expense'
-                    ? (expenses.isEmpty
+                    ? expenses.isEmpty
                         ? const Center(child: Text('No expenses found for selected filters.'))
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -746,8 +746,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 ),
                               );
                             },
-                          ))
-                    : (data.isEmpty 
+                          )
+                    : data.isEmpty 
                         ? const Center(child: Text('No data found for selected filters.'))
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -942,10 +942,12 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               ],
             );
           }
-          return const SizedBox();
+          return const Center(child: Text('Error loading orders.'));
         },
-      ),
-    );
+      );
+    },
+  ),
+);
   }
 
   Widget _buildStatColumn(String label, double value, Color color) {

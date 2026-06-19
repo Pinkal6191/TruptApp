@@ -177,10 +177,10 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                               if (cost > 0) {
                                 final expense = ExpenseModel(
                                   id: '',
-                                  title: 'Raw Material Purchase: $name ($stock $selectedUnit)',
+                                  description: 'Raw Material Purchase: $name ($stock $selectedUnit)',
                                   amount: cost,
                                   date: DateTime.now(),
-                                  category: 'Raw Materials',
+                                  type: 'Raw Materials',
                                 );
                                 await _expenseRepository.addExpense(expense);
                               }
@@ -316,10 +316,10 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                       if (isAdding && cost > 0) {
                         final expense = ExpenseModel(
                           id: '',
-                          title: 'Restock: ${material.name} ($qty ${material.unit})',
+                          description: 'Restock: ${material.name} ($qty ${material.unit})',
                           amount: cost,
                           date: DateTime.now(),
-                          category: 'Raw Materials',
+                          type: 'Raw Materials',
                         );
                         await _expenseRepository.addExpense(expense);
                       }
