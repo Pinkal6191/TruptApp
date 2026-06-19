@@ -54,6 +54,15 @@ class PartnerExpensesListScreen extends StatelessWidget {
             if (e.status == 'Pending') pending += e.amount;
           }
 
+          final Map<String, List<ExpenseModel>> groupedExpenses = {};
+          for (var e in expenses) {
+            final name = e.userName ?? 'Unknown Partner';
+            if (!groupedExpenses.containsKey(name)) {
+              groupedExpenses[name] = [];
+            }
+            groupedExpenses[name]!.add(e);
+          }
+
           return Column(
             children: [
               Container(
@@ -77,10 +86,29 @@ class PartnerExpensesListScreen extends StatelessWidget {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: expenses.length,
+                  itemCount: groupedExpenses.keys.length,
                   itemBuilder: (context, index) {
-                    final expense = expenses[index];
-                    return _ExpenseCard(expense: expense, currentUserId: user.uid);
+                    final partnerName = groupedExpenses.keys.elementAt(index);
+                    final partnerExpenses = groupedExpenses[partnerName]!;
+                    
+                    double partnerTotal = 0;
+                    for(var e in partnerExpenses) {
+                      partnerTotal += e.amount;
+                    }
+                    
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ExpansionTile(
+                        title: Text(partnerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${partnerExpenses.length} log(s) | Total: ₹${partnerTotal.toStringAsFixed(2)}'),
+                        leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.person, color: Colors.white)),
+                        children: partnerExpenses.map((expense) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          child: _ExpenseCard(expense: expense, currentUserId: user.uid),
+                        )).toList(),
+                      ),
+                    );
                   },
                 ),
               ),
