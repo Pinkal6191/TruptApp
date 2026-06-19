@@ -81,69 +81,90 @@ class ScrapSalesScreen extends StatelessWidget {
     final amountController = TextEditingController();
     final notesController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    DateTime selectedDate = DateTime.now();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Log Scrap Sale'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: buyerController,
-                  decoration: const InputDecoration(labelText: 'Buyer / Bhangarwala Name'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: weightController,
-                  decoration: const InputDecoration(labelText: 'Total Weight (kg)', suffixText: 'kg'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: amountController,
-                  decoration: const InputDecoration(labelText: 'Total Amount Received (₹)', prefixText: '₹'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Notes / Material Description'),
-                  maxLines: 2,
-                ),
-              ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Log Scrap Sale'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: buyerController,
+                    decoration: const InputDecoration(labelText: 'Buyer / Bhangarwala Name'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: weightController,
+                    decoration: const InputDecoration(labelText: 'Total Weight (kg)', suffixText: 'kg'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: amountController,
+                    decoration: const InputDecoration(labelText: 'Total Amount Received (₹)', prefixText: '₹'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sale Date', style: TextStyle(fontSize: 14)),
+                    subtitle: Text(DateFormat('dd MMM yyyy').format(selectedDate), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                    trailing: const Icon(Icons.calendar_today, size: 20),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: notesController,
+                    decoration: const InputDecoration(labelText: 'Notes / Material Description'),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1A237E)),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final amount = double.tryParse(amountController.text) ?? 0;
+                  final weight = double.tryParse(weightController.text) ?? 0;
+
+                  await FirebaseFirestore.instance.collection('scrap_sales').add({
+                    'buyerName': buyerController.text.trim(),
+                    'weightKg': weight,
+                    'amount': amount,
+                    'description': notesController.text.trim(),
+                    'date': Timestamp.fromDate(selectedDate),
+                  });
+
+                  if (context.mounted) Navigator.pop(context);
+                }
+              },
+              child: const Text('Save Sale', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1A237E)),
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final amount = double.tryParse(amountController.text) ?? 0;
-                final weight = double.tryParse(weightController.text) ?? 0;
-
-                await FirebaseFirestore.instance.collection('scrap_sales').add({
-                  'buyerName': buyerController.text.trim(),
-                  'weightKg': weight,
-                  'amount': amount,
-                  'description': notesController.text.trim(),
-                  'date': Timestamp.now(),
-                });
-
-                if (context.mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text('Save Sale', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
