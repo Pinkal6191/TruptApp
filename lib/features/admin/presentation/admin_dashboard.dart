@@ -25,6 +25,7 @@ import 'customer_list_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_partner_expenses_screen.dart';
 import 'admin_backup_screen.dart';
+import 'scrap_sales_screen.dart';
 import '../../inventory/presentation/raw_materials_screen.dart';
 import '../../inventory/presentation/production_logs_screen.dart';
 import '../../inventory/presentation/factory_inventory_screen.dart';
@@ -278,52 +279,85 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         if (expenseState is ExpensesLoaded) {
                           totalExpense = expenseState.expenses.fold(0.0, (sum, item) => sum + item.amount);
                         }
-                        return Column(
-                          children: [
-                            Row(
+                        return StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance.collection('scrap_sales').snapshots(),
+                          builder: (context, scrapSnapshot) {
+                            double totalScrap = 0.0;
+                            if (scrapSnapshot.hasData) {
+                              for (var doc in scrapSnapshot.data!.docs) {
+                                totalScrap += (doc.data() as Map<String, dynamic>)['amount'] ?? 0.0;
+                              }
+                            }
+                            return Column(
                               children: [
-                                Expanded(
-                                  child: _buildSummaryIndicatorCard(
-                                    'Total Sales',
-                                    '₹${totalSales.toStringAsFixed(0)}',
-                                    Icons.insights,
-                                    const Color(0xFF3B82F6),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Total Sales',
+                                        '₹${totalSales.toStringAsFixed(0)}',
+                                        Icons.insights,
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Total Collected',
+                                        '₹${totalCollected.toStringAsFixed(0)}',
+                                        Icons.account_balance_wallet,
+                                        const Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildSummaryIndicatorCard(
-                                    'Total Collected',
-                                    '₹${totalCollected.toStringAsFixed(0)}',
-                                    Icons.account_balance_wallet,
-                                    const Color(0xFF10B981),
-                                  ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Total Pending',
+                                        '₹${totalPending.toStringAsFixed(0)}',
+                                        Icons.pending_actions,
+                                        const Color(0xFFF59E0B),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Total Expenses',
+                                        '₹${totalExpense.toStringAsFixed(0)}',
+                                        Icons.receipt_long,
+                                        const Color(0xFFEF4444),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Scrap Revenue',
+                                        '₹${totalScrap.toStringAsFixed(0)}',
+                                        Icons.recycling,
+                                        Colors.green,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildSummaryIndicatorCard(
+                                        'Net Cash in Hand',
+                                        '₹${(totalCollected + totalScrap - totalExpense).toStringAsFixed(0)}',
+                                        Icons.account_balance,
+                                        Colors.indigo,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildSummaryIndicatorCard(
-                                    'Total Pending',
-                                    '₹${totalPending.toStringAsFixed(0)}',
-                                    Icons.pending_actions,
-                                    const Color(0xFFF59E0B),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildSummaryIndicatorCard(
-                                    'Total Expenses',
-                                    '₹${totalExpense.toStringAsFixed(0)}',
-                                    Icons.receipt_long,
-                                    const Color(0xFFEF4444),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                            );
+                          }
                         );
                       },
                     );
@@ -621,6 +655,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     subtitle: const Text('Download a complete backup of all database records'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminBackupScreen())).then((_) => RouteTracker.clearRoute()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.recycling, color: Colors.white)),
+                    title: const Text('Scrap (Bhangar) Sales'),
+                    subtitle: const Text('Log and view revenue from sold factory waste'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScrapSalesScreen())).then((_) => RouteTracker.clearRoute()),
                   ),
                 ),
                 const SizedBox(height: 12),

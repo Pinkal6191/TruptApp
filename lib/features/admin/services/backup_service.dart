@@ -17,7 +17,8 @@ class BackupService {
       'production',
       'raw_materials',
       'settings',
-      'users'
+      'users',
+      'scrap_sales'
     ];
 
     for (var col in collections) {
