@@ -8,11 +8,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/order_model.dart';
+import '../../../core/models/expense_model.dart';
 import '../../../core/utils/file_downloader.dart';
 import '../../../core/utils/route_tracker.dart';
 import '../../orders/bloc/order_bloc.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../orders/bloc/order_state.dart';
+import '../../expenses/bloc/expense_bloc.dart';
+import '../../expenses/bloc/expense_event.dart';
+import '../../expenses/bloc/expense_state.dart';
 
 class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
@@ -30,6 +34,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     super.initState();
     RouteTracker.saveRoute('admin_reports');
     context.read<OrderBloc>().add(LoadAllOrders());
+    context.read<ExpenseBloc>().add(LoadExpenses());
   }
 
   Future<void> _selectDateRange(BuildContext context) async {
@@ -160,6 +165,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     if (start.day == 1 && isLastDayOfMonth(end) && start.month == end.month && start.year == end.year) {
       return 'Monthly Report - ${DateFormat('MMMM yyyy').format(start)}';
     }
+
+    if (_reportType == 'expense') {
+      return 'Expense Report';
+    }
     
     // Check for Indian Financial Year (April 1 to March 31 of next year)
     if (start.day == 1 && start.month == DateTime.april && end.day == 31 && end.month == DateTime.march && end.year == start.year + 1) {
@@ -181,17 +190,13 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   String _getReportTypeName() {
     switch (_reportType) {
-      case 'order_wise':
-        return 'Order-wise (GST Detailed)';
-      case 'partner':
-        return 'Partner-wise Summary';
-      case 'distributor':
-        return 'Distributor-wise Summary';
-      case 'customer':
-        return 'Customer-wise Summary';
-      case 'all':
-      default:
-        return 'All Orders Summary';
+      case 'all': return 'All Orders Summary';
+      case 'order_wise': return 'Order-wise (GST)';
+      case 'partner': return 'Partner-wise';
+      case 'distributor': return 'Distributor-wise';
+      case 'customer': return 'Customer-wise';
+      case 'expense': return 'Expense Report';
+      default: return 'Report';
     }
   }
 
@@ -268,6 +273,27 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         
         rows.add(dataRow);
       }
+    } else if (_reportType == 'expense') {
+      final expenseState = context.read<ExpenseBloc>().state;
+      if (expenseState is ExpensesLoaded) {
+        var expenses = expenseState.expenses;
+        if (_dateRange != null) {
+          expenses = expenses.where((e) {
+            return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+                   e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+          }).toList();
+        }
+        rows.add(['Date', 'Type', 'Amount', 'Description', 'User']);
+        for (var e in expenses) {
+          rows.add([
+            DateFormat('dd/MM/yyyy').format(e.date),
+            e.type,
+            e.amount.toStringAsFixed(2),
+            e.description ?? '',
+            e.userName ?? '',
+          ]);
+        }
+      }
     } else {
       if (_reportType == 'distributor') {
         rows.add(['Name', 'Total Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']);
@@ -300,7 +326,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       }
     }
 
-    String csvData = Csv().encode(rows);
+    String csvData = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvData);
     final fileName = 'Business_Report_${DateTime.now().millisecondsSinceEpoch}.csv';
     
@@ -313,160 +339,142 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   Future<void> _exportPdf(List<Map<String, dynamic>> data, double totalSales) async {
     final pdf = pw.Document();
     
+    List<List<String>> _buildPdfDataRows(List<Map<String, dynamic>> data) {
+      if (_reportType == 'expense') {
+        final expenseState = context.read<ExpenseBloc>().state;
+        if (expenseState is ExpensesLoaded) {
+          var expenses = expenseState.expenses;
+          if (_dateRange != null) {
+            expenses = expenses.where((e) {
+              return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+                     e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+            }).toList();
+          }
+          return expenses.map((e) {
+            return [
+              DateFormat('dd/MM/yy').format(e.date),
+              e.type,
+              e.description ?? '',
+              e.amount.toStringAsFixed(2),
+            ];
+          }).toList();
+        }
+        return [];
+      }
+
+      return data.map((row) {
+        if (_reportType == 'order_wise') {
+          return [
+            row['date'],
+            row['invoiceNumber'],
+            row['name'],
+            row['crateDetails'],
+            row['gstAmount'].toStringAsFixed(0),
+            row['sales'].toStringAsFixed(0)
+          ];
+        } else if (_reportType == 'distributor') {
+          return [
+            row['name'],
+            row['orders'].toString(),
+            (row['sales'] as double).toStringAsFixed(0),
+            (row['commission'] as double? ?? 0.0).toStringAsFixed(0),
+            (row['paid'] as double).toStringAsFixed(0),
+            ((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(0),
+          ];
+        } else {
+          return [
+            row['name'],
+            row['orders'].toString(),
+            (row['sales'] as double).toStringAsFixed(0),
+            (row['paid'] as double).toStringAsFixed(0),
+            ((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(0),
+          ];
+        }
+      }).toList();
+    }
+    
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
         build: (pw.Context context) {
-          // Extract unique product names for order_wise
-          Set<String> productNames = {};
-          if (_reportType == 'order_wise') {
-            for (var row in data) {
-              if (row['itemsMap'] != null) {
-                productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
-              }
-            }
-          }
-          List<String> sortedProducts = productNames.toList()..sort();
-
-          List<String> orderWiseHeaders = ['Inv No', 'Date', 'Customer/Shop', 'GST Number'];
-          orderWiseHeaders.addAll(sortedProducts);
-          orderWiseHeaders.addAll(['Subtotal', 'GST (5%)', 'Total', 'Paid', 'Balance']);
-
-          Map<int, pw.Alignment> orderWiseAlignments = {
-            0: pw.Alignment.centerLeft,
-            1: pw.Alignment.center,
-            2: pw.Alignment.centerLeft,
-            3: pw.Alignment.center,
-          };
-          int colIndex = 4;
-          for (int i = 0; i < sortedProducts.length; i++) {
-            orderWiseAlignments[colIndex++] = pw.Alignment.center;
-          }
-          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Subtotal
-          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // GST
-          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Total
-          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Paid
-          orderWiseAlignments[colIndex++] = pw.Alignment.centerRight; // Balance
-
           return [
-            // Company and Report Header Info
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Left: Company Info
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('TRUPT ENTERPRISE', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('4160, B/H Mahalaxmi Cold Storage, Boriavi, Anand - 387310', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text('Phone: +91 96624 98664, +91 98793 95727', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text('Email: truptenterprise26@gmail.com | Website: truptenterprise.com', style: const pw.TextStyle(fontSize: 8)),
-                    pw.SizedBox(height: 2),
-                    pw.Text('GSTIN: 24AAZFT5241K1ZK', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-                  ],
-                ),
-                // Right: Report Details
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('BUSINESS REPORT', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Report Type: ${_getReportTypeName()}', style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text(_getDateRangeDescription(), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                    pw.Text('Generated On: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 6),
-            pw.Divider(thickness: 1, color: PdfColors.grey300),
+            // Header
+            pw.Text('BUSINESS REPORT: ${_getReportTypeName()}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.Text('Period: ${_getDateRangeDescription()}'),
             pw.SizedBox(height: 10),
-
-            // Summary metrics
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text('Total Sales: Rs. ${totalSales.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                pw.Text('Total Records: ${data.length}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
-              ],
-            ),
-            pw.SizedBox(height: 12),
-
-            // Main Table
+        
+            // Data Table
             pw.TableHelper.fromTextArray(
-              headers: _reportType == 'order_wise'
-                  ? orderWiseHeaders
-                  : _reportType == 'distributor'
-                      ? ['Name', 'Orders', 'Total Sales', 'Commission', 'Total Paid', 'Balance']
-                      : ['Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
-              data: data.map((row) {
-                if (_reportType == 'order_wise') {
-                  final double subtotal = row['subtotal'] ?? 0.0;
-                  final double gstAmount = row['gstAmount'] ?? 0.0;
-                  final double sales = row['sales'] ?? 0.0;
-                  final double paid = row['paid'] ?? 0.0;
-                  final double balance = sales - paid;
-                  Map<String, int> itemsMap = row['itemsMap'] ?? {};
-                  
-                  List<String> rowData = [
-                    row['invoiceNumber'] ?? '',
-                    row['date'] ?? '',
-                    row['name'] ?? '',
-                    row['customerGst'] ?? 'N/A',
-                  ];
-                  for (String product in sortedProducts) {
-                    rowData.add(itemsMap[product]?.toString() ?? '0');
-                  }
-                  rowData.addAll([
-                    'Rs. ${subtotal.toStringAsFixed(2)}',
-                    'Rs. ${gstAmount.toStringAsFixed(2)}',
-                    'Rs. ${sales.toStringAsFixed(2)}',
-                    'Rs. ${paid.toStringAsFixed(2)}',
-                    'Rs. ${balance.toStringAsFixed(2)}',
-                  ]);
-                  return rowData;
-                } else if (_reportType == 'distributor') {
-                  return [
-                    row['name'],
-                    row['orders'].toString(),
-                    'Rs. ${(row['sales'] as double).toStringAsFixed(2)}',
-                    'Rs. ${(row['commission'] as double? ?? 0.0).toStringAsFixed(2)}',
-                    'Rs. ${(row['paid'] as double).toStringAsFixed(2)}',
-                    'Rs. ${((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(2)}',
-                  ];
-                } else {
-                  return [
-                    row['name'],
-                    row['orders'].toString(),
-                    'Rs. ${(row['sales'] as double).toStringAsFixed(2)}',
-                    'Rs. ${(row['paid'] as double).toStringAsFixed(2)}',
-                    'Rs. ${((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(2)}',
-                  ];
-                }
-              }).toList(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 8),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
-              cellStyle: const pw.TextStyle(fontSize: 7),
-              cellAlignments: _reportType == 'order_wise'
-                  ? orderWiseAlignments
-                  : _reportType == 'distributor'
+              context: context,
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellPadding: const pw.EdgeInsets.all(4),
+              headers: _reportType == 'expense' 
+                  ? ['Date', 'Type', 'Description', 'Amount']
+                  : _reportType == 'order_wise'
+                      ? ['Date', 'Invoice', 'Customer', 'Items', 'GST', 'Total']
+                      : _reportType == 'distributor'
+                          ? ['Distributor Name', 'Orders', 'Sales', 'Comm.', 'Paid', 'Bal']
+                          : ['Entity Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
+              data: _buildPdfDataRows(data),
+              columnWidths: _reportType == 'expense'
+                  ? {
+                      0: const pw.FlexColumnWidth(1.5),
+                      1: const pw.FlexColumnWidth(2),
+                      2: const pw.FlexColumnWidth(3),
+                      3: const pw.FlexColumnWidth(1.5),
+                    }
+                  : _reportType == 'order_wise'
+                      ? {
+                          0: const pw.FlexColumnWidth(1.5),
+                          1: const pw.FlexColumnWidth(1.5),
+                          2: const pw.FlexColumnWidth(2),
+                          3: const pw.FlexColumnWidth(2.5),
+                          4: const pw.FlexColumnWidth(1),
+                          5: const pw.FlexColumnWidth(1),
+                        }
+                      : {
+                          0: const pw.FlexColumnWidth(3),
+                          1: const pw.FlexColumnWidth(1),
+                          2: const pw.FlexColumnWidth(1.5),
+                          3: const pw.FlexColumnWidth(1.5),
+                          4: const pw.FlexColumnWidth(1.5),
+                          5: const pw.FlexColumnWidth(1.5),
+                        },
+              cellAlignments: _reportType == 'expense'
+                  ? {
+                      0: pw.Alignment.centerLeft,
+                      1: pw.Alignment.centerLeft,
+                      2: pw.Alignment.centerLeft,
+                      3: pw.Alignment.centerRight,
+                    }
+                  : _reportType == 'order_wise'
                       ? {
                           0: pw.Alignment.centerLeft,
-                          1: pw.Alignment.center,
-                          2: pw.Alignment.centerRight,
-                          3: pw.Alignment.centerRight,
+                          1: pw.Alignment.centerLeft,
+                          2: pw.Alignment.centerLeft,
+                          3: pw.Alignment.centerLeft,
                           4: pw.Alignment.centerRight,
                           5: pw.Alignment.centerRight,
                         }
-                      : {
-                          0: pw.Alignment.centerLeft,
-                          1: pw.Alignment.center,
-                          2: pw.Alignment.centerRight,
-                          3: pw.Alignment.centerRight,
-                          4: pw.Alignment.centerRight,
-                        },
+                      : _reportType == 'distributor'
+                          ? {
+                              0: pw.Alignment.centerLeft,
+                              1: pw.Alignment.center,
+                              2: pw.Alignment.centerRight,
+                              3: pw.Alignment.centerRight,
+                              4: pw.Alignment.centerRight,
+                              5: pw.Alignment.centerRight,
+                            }
+                          : {
+                              0: pw.Alignment.centerLeft,
+                              1: pw.Alignment.center,
+                              2: pw.Alignment.centerRight,
+                              3: pw.Alignment.centerRight,
+                              4: pw.Alignment.centerRight,
+                            },
             ),
           ];
         },
@@ -495,7 +503,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ]);
       }
       
-      String csvData = Csv().encode(rows);
+      String csvData = const ListToCsvConverter().convert(rows);
       final bytes = utf8.encode(csvData);
       final fileName = 'Customer_Directory_${DateTime.now().millisecondsSinceEpoch}.csv';
       
@@ -520,17 +528,31 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         foregroundColor: const Color(0xFF1E3A8A),
         elevation: 0,
       ),
-      body: BlocBuilder<OrderBloc, OrderState>(
-        builder: (context, state) {
-          if (state is OrderLoading) return const Center(child: CircularProgressIndicator());
-          if (state is OrdersLoaded) {
-            final loadedState = state as OrdersLoaded;
-            final data = _processData(loadedState.orders);
-            double totalSales = data.fold(0.0, (sum, row) => sum + (row['sales'] as double));
-            int totalOrders = data.fold(0, (sum, row) => sum + (row['orders'] as int));
+      body: BlocBuilder<ExpenseBloc, ExpenseState>(
+        builder: (context, expenseState) {
+          return BlocBuilder<OrderBloc, OrderState>(
+            builder: (context, state) {
+              if (state is OrderLoading || expenseState is ExpenseLoading) return const Center(child: CircularProgressIndicator());
+              if (state is OrdersLoaded && expenseState is ExpensesLoaded) {
+                final loadedState = state as OrdersLoaded;
+                final data = _processData(loadedState.orders);
+                
+                // Calculations for generic UI
+                double totalSales = data.fold(0.0, (sum, row) => sum + (row['sales'] as double));
+                int totalOrders = data.fold(0, (sum, row) => sum + (row['orders'] as int));
+                
+                // Expense specific data processing for UI
+                var expenses = expenseState.expenses;
+                if (_dateRange != null) {
+                  expenses = expenses.where((e) {
+                    return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+                           e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+                  }).toList();
+                }
+                double totalExpenses = expenses.fold(0.0, (sum, exp) => sum + exp.amount);
 
-            return Column(
-              children: [
+                return Column(
+                  children: [
                 // Filters Section
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -555,6 +577,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 DropdownMenuItem(value: 'partner', child: Text('Partner-wise', overflow: TextOverflow.ellipsis)),
                                 DropdownMenuItem(value: 'distributor', child: Text('Distributor-wise', overflow: TextOverflow.ellipsis)),
                                 DropdownMenuItem(value: 'customer', child: Text('Customer-wise', overflow: TextOverflow.ellipsis)),
+                                DropdownMenuItem(value: 'expense', child: Text('Expense Report', overflow: TextOverflow.ellipsis)),
                               ],
                               onChanged: (val) => setState(() => _reportType = val!),
                             ),
@@ -604,62 +627,137 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 ),
                 
                 // Summary Cards
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)]),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Sales', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                              Text('₹${totalSales.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF34D399)]),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Orders', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                              Text('$totalOrders', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                            ],
+                if (_reportType == 'expense')
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFEF4444)]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Expenses', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                Text('₹${totalExpenses.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF6B7280), Color(0xFF9CA3AF)]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Entries', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                Text('${expenses.length}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Sales', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                Text('₹${totalSales.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF34D399)]),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Orders', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                Text('$totalOrders', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
                 // Data List
                 Expanded(
-                  child: data.isEmpty 
-                    ? const Center(child: Text('No data found for selected filters.'))
-                    : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: data.length,
-                          itemBuilder: (context, index) {
-                            final row = data[index];
-                            final double sales = row['sales'];
-                            final double paid = row['paid'];
-                            final double balance = sales - paid;
-                            final bool isOrderWise = row['isOrderWise'] ?? false;
+                  child: _reportType == 'expense'
+                    ? (expenses.isEmpty
+                        ? const Center(child: Text('No expenses found for selected filters.'))
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: expenses.length,
+                            itemBuilder: (context, index) {
+                              final exp = expenses[index];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.all(16),
+                                  title: Text(exp.type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Text('Date: ${DateFormat('dd MMM yyyy').format(exp.date)}'),
+                                      if (exp.description != null && exp.description!.isNotEmpty)
+                                        Text('Desc: ${exp.description}', style: const TextStyle(color: Colors.grey)),
+                                    ],
+                                  ),
+                                  trailing: Text(
+                                    '₹${exp.amount.toStringAsFixed(2)}',
+                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ),
+                              );
+                            },
+                          ))
+                    : (data.isEmpty 
+                        ? const Center(child: Text('No data found for selected filters.'))
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: data.length,
+                            itemBuilder: (context, index) {
+                              final row = data[index];
+                              final double sales = row['sales'];
+                              final double paid = row['paid'];
+                              final double balance = sales - paid;
+                              final bool isOrderWise = row['isOrderWise'] ?? false;
 
                             if (isOrderWise) {
                               final String invoiceNo = row['invoiceNumber'] ?? 'N/A';
@@ -808,7 +906,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 ),
 
                 // Action Buttons
-                if (data.isNotEmpty)
+                if (_reportType == 'expense' || data.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
