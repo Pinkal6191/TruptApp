@@ -199,6 +199,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               sortedOrders.sort((a, b) => a.invoiceNumber.compareTo(b.invoiceNumber));
             } else if (_sortOrder == 'Invoice Desc') {
               sortedOrders.sort((a, b) => b.invoiceNumber.compareTo(a.invoiceNumber));
+            } else if (_sortOrder == 'Date Asc') {
+              sortedOrders.sort((a, b) => a.createdAt.compareTo(b.createdAt));
             } else {
               sortedOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
             }
@@ -330,6 +332,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               DropdownMenuItem(
                                 value: 'Date Desc',
                                 child: Text('Newest'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Date Asc',
+                                child: Text('Oldest'),
                               ),
                               DropdownMenuItem(
                                 value: 'Invoice Asc',

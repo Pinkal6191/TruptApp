@@ -17,6 +17,8 @@ import '../../orders/bloc/order_state.dart';
 import '../../expenses/bloc/expense_bloc.dart';
 import '../../expenses/bloc/expense_event.dart';
 import '../../expenses/bloc/expense_state.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 
 class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
@@ -26,10 +28,10 @@ class AdminReportsScreen extends StatefulWidget {
 }
 
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
-  String _reportType = 'all'; // all, partner, distributor, customer
+  String _reportType = 'all'; // all, partner, distributor, customer, order_wise, expense
   DateTimeRange? _dateRange;
   String _periodFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
-  String _sortOrder = 'Desc'; // Desc, Asc
+  String _sortOrder = 'Sales Desc'; // Default to Sales Desc for aggregated, will switch to Date Desc for order_wise/expense
 
   @override
   void initState() {
@@ -59,8 +61,46 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       _reportType = 'all';
       _dateRange = null;
       _periodFilter = 'All';
-      _sortOrder = 'Desc';
+      _sortOrder = 'Sales Desc';
     });
+  }
+
+  void _onReportTypeChanged(String newType) {
+    setState(() {
+      _reportType = newType;
+      if (newType == 'order_wise' || newType == 'expense') {
+        _sortOrder = 'Date Desc';
+      } else {
+        _sortOrder = 'Sales Desc';
+      }
+    });
+  }
+
+  List<DropdownMenuItem<String>> _getSortItems() {
+    if (_reportType == 'order_wise') {
+      return const [
+        DropdownMenuItem(value: 'Date Desc', child: Text('Date (Newest)')),
+        DropdownMenuItem(value: 'Date Asc', child: Text('Date (Oldest)')),
+        DropdownMenuItem(value: 'Invoice Asc', child: Text('Invoice (Asc)')),
+        DropdownMenuItem(value: 'Invoice Desc', child: Text('Invoice (Desc)')),
+        DropdownMenuItem(value: 'Sales Desc', child: Text('Sales (High First)')),
+        DropdownMenuItem(value: 'Sales Asc', child: Text('Sales (Low First)')),
+      ];
+    } else if (_reportType == 'expense') {
+      return const [
+        DropdownMenuItem(value: 'Date Desc', child: Text('Date (Newest)')),
+        DropdownMenuItem(value: 'Date Asc', child: Text('Date (Oldest)')),
+        DropdownMenuItem(value: 'Amount Desc', child: Text('Amount (High First)')),
+        DropdownMenuItem(value: 'Amount Asc', child: Text('Amount (Low First)')),
+      ];
+    } else {
+      return const [
+        DropdownMenuItem(value: 'Sales Desc', child: Text('Sales (High First)')),
+        DropdownMenuItem(value: 'Sales Asc', child: Text('Sales (Low First)')),
+        DropdownMenuItem(value: 'Name Asc', child: Text('Name (A-Z)')),
+        DropdownMenuItem(value: 'Name Desc', child: Text('Name (Z-A)')),
+      ];
+    }
   }
 
   List<ExpenseModel> _processExpenses(List<ExpenseModel> rawExpenses) {
@@ -92,9 +132,14 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     }
 
     List<ExpenseModel> sorted = List.from(filtered);
-    if (_sortOrder == 'Asc') {
+    if (_sortOrder == 'Date Asc') {
       sorted.sort((a, b) => a.date.compareTo(b.date));
+    } else if (_sortOrder == 'Amount Asc') {
+      sorted.sort((a, b) => a.amount.compareTo(b.amount));
+    } else if (_sortOrder == 'Amount Desc') {
+      sorted.sort((a, b) => b.amount.compareTo(a.amount));
     } else {
+      // Date Desc
       sorted.sort((a, b) => b.date.compareTo(a.date));
     }
     return sorted;
@@ -142,9 +187,18 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
     if (_reportType == 'order_wise') {
       List<OrderModel> sorted = List.from(filtered);
-      if (_sortOrder == 'Asc') {
+      if (_sortOrder == 'Date Asc') {
         sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      } else if (_sortOrder == 'Invoice Asc') {
+        sorted.sort((a, b) => a.invoiceNumber.compareTo(b.invoiceNumber));
+      } else if (_sortOrder == 'Invoice Desc') {
+        sorted.sort((a, b) => b.invoiceNumber.compareTo(a.invoiceNumber));
+      } else if (_sortOrder == 'Sales Asc') {
+        sorted.sort((a, b) => a.finalAmount.compareTo(b.finalAmount));
+      } else if (_sortOrder == 'Sales Desc') {
+        sorted.sort((a, b) => b.finalAmount.compareTo(a.finalAmount));
       } else {
+        // Date Desc
         sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
       
@@ -208,9 +262,14 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     }
 
     var resultList = aggregated.values.toList();
-    if (_sortOrder == 'Asc') {
+    if (_sortOrder == 'Sales Asc') {
       resultList.sort((a, b) => (a['sales'] as double).compareTo(b['sales'] as double));
+    } else if (_sortOrder == 'Name Asc') {
+      resultList.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+    } else if (_sortOrder == 'Name Desc') {
+      resultList.sort((a, b) => (b['name'] as String).compareTo(a['name'] as String));
     } else {
+      // Sales Desc
       resultList.sort((a, b) => (b['sales'] as double).compareTo(a['sales'] as double));
     }
     return resultList;
@@ -587,6 +646,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    final bool isAccountant = authState is Authenticated && authState.user.role == 'accountant';
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -632,15 +693,17 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
-                              items: const [
-                                DropdownMenuItem(value: 'all', child: Text('All Orders (Summary)', overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'order_wise', child: Text('Order-wise (GST)', overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'partner', child: Text('Partner-wise', overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'distributor', child: Text('Distributor-wise', overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'customer', child: Text('Customer-wise', overflow: TextOverflow.ellipsis)),
-                                DropdownMenuItem(value: 'expense', child: Text('Expense Report', overflow: TextOverflow.ellipsis)),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('All Orders (Summary)', overflow: TextOverflow.ellipsis)),
+                                const DropdownMenuItem(value: 'order_wise', child: Text('Order-wise (GST)', overflow: TextOverflow.ellipsis)),
+                                if (!isAccountant) ...[
+                                  const DropdownMenuItem(value: 'partner', child: Text('Partner-wise', overflow: TextOverflow.ellipsis)),
+                                  const DropdownMenuItem(value: 'distributor', child: Text('Distributor-wise', overflow: TextOverflow.ellipsis)),
+                                  const DropdownMenuItem(value: 'customer', child: Text('Customer-wise', overflow: TextOverflow.ellipsis)),
+                                ],
+                                const DropdownMenuItem(value: 'expense', child: Text('Expense Report', overflow: TextOverflow.ellipsis)),
                               ],
-                              onChanged: (val) => setState(() => _reportType = val!),
+                              onChanged: (val) => _onReportTypeChanged(val!),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -684,16 +747,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                     });
                                   }
                                 },
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'Desc',
-                                    child: Text('Descending'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'Asc',
-                                    child: Text('Ascending'),
-                                  ),
-                                ],
+                                items: _getSortItems(),
                               ),
                             ),
                           ),
