@@ -264,7 +264,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     double totalPending = 0.0;
                     double totalSales = 0.0;
                     if (orderState is OrdersLoaded) {
-                      for (var order in orderState.orders) {
+                      final filteredOrders = orderState.orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
+                      for (var order in filteredOrders) {
                         totalSales += order.finalAmount;
                         totalCollected += order.paidAmount;
                         // Only count positive remaining as pending; negative = overpaid (change to return)
@@ -513,7 +514,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     double plCollected = 0.0;
                     double plPending = 0.0;
                     if (orderState is OrdersLoaded) {
-                      for (var order in orderState.orders) {
+                      final filteredOrders = orderState.orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
+                      for (var order in filteredOrders) {
                         if (order.orderType == 'private_label') {
                           plSales += order.finalAmount;
                           plCollected += order.paidAmount;
@@ -621,13 +623,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, orderState) {
                     if (orderState is OrdersLoaded) {
+                      final filteredOrders = orderState.orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
                       return Column(
                         children: [
-                          SalesTrendGraph(orders: orderState.orders),
+                          SalesTrendGraph(orders: filteredOrders),
                           const SizedBox(height: 16),
-                          CrateSalesBreakdown(orders: orderState.orders),
+                          CrateSalesBreakdown(orders: filteredOrders),
                           const SizedBox(height: 16),
-                          RegularCustomersGraph(orders: orderState.orders),
+                          RegularCustomersGraph(orders: filteredOrders),
                         ],
                       );
                     }

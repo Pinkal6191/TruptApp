@@ -91,7 +91,8 @@ class _AccountantDashboardState extends State<AccountantDashboard> {
                       double totalPending = 0.0;
 
                       if (orderState is OrdersLoaded) {
-                        for (var order in orderState.orders) {
+                        final filteredOrders = orderState.orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
+                        for (var order in filteredOrders) {
                           totalSales += order.finalAmount;
                           totalCollected += order.paidAmount;
                           if (order.remainingAmount > 0) {

@@ -146,7 +146,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   }
 
   List<Map<String, dynamic>> _processData(List<OrderModel> orders) {
-    List<OrderModel> filtered = orders;
+    // Exclude distributor individual retail orders to avoid duplicate/inflated calculations
+    List<OrderModel> filtered = orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
 
     if (_periodFilter != 'All') {
       final now = DateTime.now();
@@ -182,7 +183,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         (o.creatorRole == 'admin' && o.orderReference != 'Direct (Online / Call)')
       ).toList();
     } else if (_reportType == 'distributor') {
-      filtered = filtered.where((o) => o.creatorRole == 'distributor').toList();
+      filtered = filtered.where((o) => o.isSupplyOrder).toList();
     }
 
     if (_reportType == 'order_wise') {
@@ -247,7 +248,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       }
       
       double commission = 0.0;
-      if (o.creatorRole == 'distributor') {
+      if (o.isSupplyOrder) {
         for (var item in o.items) {
           if (item.pricePerCrate > item.distributorCost && item.distributorCost > 0) {
             commission += ((item.pricePerCrate - item.distributorCost) * item.quantity);

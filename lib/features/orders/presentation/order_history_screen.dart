@@ -155,6 +155,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
             var sortedOrders = List<OrderModel>.from(state.orders);
             
+            // Exclude distributor individual retail orders for all non-distributor roles (Admin, Partners, Accountants)
+            // to avoid showing duplicates and double counting in their lists/totals.
+            if (!isDistributor) {
+              sortedOrders = sortedOrders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
+            }
+            
             if (!isAdmin && !isAccountant && currentUserId != null) {
               sortedOrders = sortedOrders.where((o) {
                 bool isUserRelated = o.createdBy == currentUserId || 
