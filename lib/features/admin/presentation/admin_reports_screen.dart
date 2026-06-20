@@ -204,10 +204,21 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       }
       
       return sorted.map((o) {
-        String crateDetails = o.items.map((item) => '${item.productName} - ${item.quantity}').join(', ');
+        String crateDetails = o.items.map((item) {
+          double gross = item.quantity * item.pricePerCrate;
+          double taxable = gross / 1.05;
+          double gst = gross - taxable;
+          return '${item.productName} - ${item.quantity} caret - Rs. ${gross.toStringAsFixed(2)} - GST Rs. ${gst.toStringAsFixed(2)} (Incl.) - Rs. ${taxable.toStringAsFixed(2)}';
+        }).join('\n');
+        
         Map<String, int> itemsMap = {};
+        Map<String, String> itemsDetailsMap = {};
         for (var item in o.items) {
           itemsMap[item.productName] = item.quantity;
+          double gross = item.quantity * item.pricePerCrate;
+          double taxable = gross / 1.05;
+          double gst = gross - taxable;
+          itemsDetailsMap[item.productName] = '${item.quantity} caret - Rs. ${gross.toStringAsFixed(2)} - GST Rs. ${gst.toStringAsFixed(2)} - Rs. ${taxable.toStringAsFixed(2)}';
         }
 
         return {
@@ -224,6 +235,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           'partnerName': o.partnerName,
           'crateDetails': crateDetails,
           'itemsMap': itemsMap,
+          'itemsDetailsMap': itemsDetailsMap,
           'isOrderWise': true,
         };
       }).toList();
@@ -387,7 +399,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         double paid = row['paid'] ?? 0.0;
         double balance = sales - paid;
         
-        Map<String, int> itemsMap = row['itemsMap'] ?? {};
+        Map<String, String> itemsDetailsMap = Map<String, String>.from(row['itemsDetailsMap'] ?? {});
 
         List<dynamic> dataRow = [
           row['invoiceNumber'] ?? '',
@@ -397,7 +409,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ];
         
         for (String product in sortedProducts) {
-          dataRow.add(itemsMap[product]?.toString() ?? '0');
+          dataRow.add(itemsDetailsMap[product] ?? '0');
         }
 
         dataRow.addAll([
@@ -507,7 +519,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           double sales = row['sales'] ?? 0.0;
           double paid = row['paid'] ?? 0.0;
           double balance = sales - paid;
-          Map<String, int> itemsMap = row['itemsMap'] ?? {};
+          Map<String, String> itemsDetailsMap = Map<String, String>.from(row['itemsDetailsMap'] ?? {});
           
           List<dynamic> dataRow = [
             row['invoiceNumber'] ?? '',
@@ -517,7 +529,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           ];
           
           for (String product in sortedProducts) {
-            dataRow.add(itemsMap[product]?.toString() ?? '0');
+            dataRow.add(itemsDetailsMap[product] ?? '0');
           }
           
           dataRow.addAll([
@@ -615,7 +627,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         };
         int colIdx = 4;
         for (var _ in sortedProducts) {
-          widths[colIdx++] = const pw.FlexColumnWidth(0.8); // Product columns
+          widths[colIdx++] = const pw.FlexColumnWidth(4.5); // Product columns
         }
         widths[colIdx++] = const pw.FlexColumnWidth(1.2); // Subtotal
         widths[colIdx++] = const pw.FlexColumnWidth(0.9); // GST Rate

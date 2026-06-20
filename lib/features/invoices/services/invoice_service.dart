@@ -201,21 +201,30 @@ class InvoiceService {
 
   static pw.Widget _buildItemsTable(List<OrderItemModel> items, pw.Font font, pw.Font boldFont) {
     return pw.TableHelper.fromTextArray(
-      headers: ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Amount'],
-      data: items.map((item) => [
-        item.productName,
-        item.quantity.toString(),
-        'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
-        'Rs. ${(item.quantity * item.pricePerCrate).toStringAsFixed(2)}',
-      ]).toList(),
-      headerStyle: pw.TextStyle(font: boldFont, color: PdfColors.white),
+      headers: ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Total Price', 'GST (5% Incl.)', 'Taxable Value'],
+      data: items.map((item) {
+        final double gross = item.quantity * item.pricePerCrate;
+        final double taxable = gross / 1.05;
+        final double gst = gross - taxable;
+        return [
+          item.productName,
+          '${item.quantity} caret',
+          'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
+          'Rs. ${gross.toStringAsFixed(2)}',
+          'Rs. ${gst.toStringAsFixed(2)}',
+          'Rs. ${taxable.toStringAsFixed(2)}',
+        ];
+      }).toList(),
+      headerStyle: pw.TextStyle(font: boldFont, color: PdfColors.white, fontSize: 8),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
-      cellStyle: pw.TextStyle(font: font),
+      cellStyle: pw.TextStyle(font: font, fontSize: 8),
       cellAlignments: {
         0: pw.Alignment.centerLeft,
         1: pw.Alignment.center,
         2: pw.Alignment.centerRight,
         3: pw.Alignment.centerRight,
+        4: pw.Alignment.centerRight,
+        5: pw.Alignment.centerRight,
       },
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
     );
