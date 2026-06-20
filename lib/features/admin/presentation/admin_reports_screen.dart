@@ -28,6 +28,8 @@ class AdminReportsScreen extends StatefulWidget {
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
   String _reportType = 'all'; // all, partner, distributor, customer
   DateTimeRange? _dateRange;
+  String _periodFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
+  String _sortOrder = 'Desc'; // Desc, Asc
 
   @override
   void initState() {
@@ -47,6 +49,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     if (picked != null) {
       setState(() {
         _dateRange = picked;
+        _periodFilter = 'Custom';
       });
     }
   }
@@ -55,13 +58,71 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     setState(() {
       _reportType = 'all';
       _dateRange = null;
+      _periodFilter = 'All';
+      _sortOrder = 'Desc';
     });
+  }
+
+  List<ExpenseModel> _processExpenses(List<ExpenseModel> rawExpenses) {
+    List<ExpenseModel> filtered = rawExpenses;
+    if (_periodFilter != 'All') {
+      final now = DateTime.now();
+      filtered = filtered.where((e) {
+        final date = DateTime(e.date.year, e.date.month, e.date.day);
+        if (_periodFilter == 'Daily') {
+          final today = DateTime(now.year, now.month, now.day);
+          return date.isAtSameMomentAs(today);
+        } else if (_periodFilter == 'Monthly') {
+          return date.year == now.year && date.month == now.month;
+        } else if (_periodFilter == 'Financial Year') {
+          int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+          final fyStart = DateTime(fyStartYear, 4, 1);
+          final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+          return date.isAtSameMomentAs(fyStart) || 
+                 date.isAtSameMomentAs(fyEnd) || 
+                 (date.isAfter(fyStart) && date.isBefore(fyEnd));
+        }
+        return true;
+      }).toList();
+    } else if (_dateRange != null) {
+      filtered = filtered.where((e) {
+        return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+               e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+      }).toList();
+    }
+
+    List<ExpenseModel> sorted = List.from(filtered);
+    if (_sortOrder == 'Asc') {
+      sorted.sort((a, b) => a.date.compareTo(b.date));
+    } else {
+      sorted.sort((a, b) => b.date.compareTo(a.date));
+    }
+    return sorted;
   }
 
   List<Map<String, dynamic>> _processData(List<OrderModel> orders) {
     List<OrderModel> filtered = orders;
 
-    if (_dateRange != null) {
+    if (_periodFilter != 'All') {
+      final now = DateTime.now();
+      filtered = filtered.where((o) {
+        final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
+        if (_periodFilter == 'Daily') {
+          final today = DateTime(now.year, now.month, now.day);
+          return date.isAtSameMomentAs(today);
+        } else if (_periodFilter == 'Monthly') {
+          return date.year == now.year && date.month == now.month;
+        } else if (_periodFilter == 'Financial Year') {
+          int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+          final fyStart = DateTime(fyStartYear, 4, 1);
+          final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+          return date.isAtSameMomentAs(fyStart) || 
+                 date.isAtSameMomentAs(fyEnd) || 
+                 (date.isAfter(fyStart) && date.isBefore(fyEnd));
+        }
+        return true;
+      }).toList();
+    } else if (_dateRange != null) {
       filtered = filtered.where((o) {
         final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
         final start = DateTime(_dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
@@ -81,7 +142,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
     if (_reportType == 'order_wise') {
       List<OrderModel> sorted = List.from(filtered);
-      sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (_sortOrder == 'Asc') {
+        sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      } else {
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
       
       return sorted.map((o) {
         String crateDetails = o.items.map((item) => '${item.productName} - ${item.quantity}').join(', ');
@@ -143,11 +208,25 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     }
 
     var resultList = aggregated.values.toList();
-    resultList.sort((a, b) => (b['sales'] as double).compareTo(a['sales'] as double));
+    if (_sortOrder == 'Asc') {
+      resultList.sort((a, b) => (a['sales'] as double).compareTo(b['sales'] as double));
+    } else {
+      resultList.sort((a, b) => (b['sales'] as double).compareTo(a['sales'] as double));
+    }
     return resultList;
   }
 
   String _getDateRangeDescription() {
+    if (_periodFilter == 'Daily') {
+      return 'Daily Report - ${DateFormat('dd/MM/yyyy').format(DateTime.now())}';
+    } else if (_periodFilter == 'Monthly') {
+      return 'Monthly Report - ${DateFormat('MMMM yyyy').format(DateTime.now())}';
+    } else if (_periodFilter == 'Financial Year') {
+      final now = DateTime.now();
+      int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+      return 'Financial Year Report - FY $fyStartYear-${((fyStartYear + 1) % 100).toString().padLeft(2, '0')}';
+    }
+
     if (_dateRange == null) {
       return 'All Time Report';
     }
@@ -276,13 +355,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     } else if (_reportType == 'expense') {
       final expenseState = context.read<ExpenseBloc>().state;
       if (expenseState is ExpensesLoaded) {
-        var expenses = expenseState.expenses;
-        if (_dateRange != null) {
-          expenses = expenses.where((e) {
-            return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-                   e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
-          }).toList();
-        }
+        var expenses = _processExpenses(expenseState.expenses);
         rows.add(['Date', 'Type', 'Amount', 'Description', 'User']);
         for (var e in expenses) {
           rows.add([
@@ -343,13 +416,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       if (_reportType == 'expense') {
         final expenseState = context.read<ExpenseBloc>().state;
         if (expenseState is ExpensesLoaded) {
-          var expenses = expenseState.expenses;
-          if (_dateRange != null) {
-            expenses = expenses.where((e) {
-              return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-                     e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
-            }).toList();
-          }
+          var expenses = _processExpenses(expenseState.expenses);
           return expenses.map((e) {
             return [
               DateFormat('dd/MM/yy').format(e.date),
@@ -542,13 +609,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 int totalOrders = data.fold(0, (sum, row) => sum + (row['orders'] as int));
                 
                 // Expense specific data processing for UI
-                var expenses = expenseState.expenses;
-                if (_dateRange != null) {
-                  expenses = expenses.where((e) {
-                    return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-                           e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
-                  }).toList();
-                }
+                var expenses = _processExpenses(expenseState.expenses);
                 double totalExpenses = expenses.fold(0.0, (sum, exp) => sum + exp.amount);
 
                 return Column(
@@ -600,7 +661,146 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           ),
                         ],
                       ),
-                      if (_reportType != 'all' || _dateRange != null || _reportType == 'customer') ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _sortOrder,
+                                icon: const Icon(Icons.sort, size: 16, color: Color(0xFF1E3A8A)),
+                                style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 12),
+                                onChanged: (String? newValue) {
+                                  if (newValue != null) {
+                                    setState(() {
+                                      _sortOrder = newValue;
+                                    });
+                                  }
+                                },
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'Desc',
+                                    child: Text('Descending'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Asc',
+                                    child: Text('Ascending'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  FilterChip(
+                                    label: const Text('All Time', style: TextStyle(fontSize: 12)),
+                                    selected: _periodFilter == 'All',
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _periodFilter = 'All';
+                                          _dateRange = null;
+                                        });
+                                      }
+                                    },
+                                    selectedColor: const Color(0xFFEFF6FF),
+                                    checkmarkColor: const Color(0xFF1E3A8A),
+                                    labelStyle: TextStyle(
+                                      color: _periodFilter == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                                      fontWeight: _periodFilter == 'All' ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    side: BorderSide(
+                                      color: _periodFilter == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  FilterChip(
+                                    label: const Text('Daily', style: TextStyle(fontSize: 12)),
+                                    selected: _periodFilter == 'Daily',
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _periodFilter = 'Daily';
+                                          _dateRange = null;
+                                        });
+                                      }
+                                    },
+                                    selectedColor: const Color(0xFFEFF6FF),
+                                    checkmarkColor: const Color(0xFF1E3A8A),
+                                    labelStyle: TextStyle(
+                                      color: _periodFilter == 'Daily' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                                      fontWeight: _periodFilter == 'Daily' ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    side: BorderSide(
+                                      color: _periodFilter == 'Daily' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  FilterChip(
+                                    label: const Text('Monthly', style: TextStyle(fontSize: 12)),
+                                    selected: _periodFilter == 'Monthly',
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _periodFilter = 'Monthly';
+                                          _dateRange = null;
+                                        });
+                                      }
+                                    },
+                                    selectedColor: const Color(0xFFEFF6FF),
+                                    checkmarkColor: const Color(0xFF1E3A8A),
+                                    labelStyle: TextStyle(
+                                      color: _periodFilter == 'Monthly' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                                      fontWeight: _periodFilter == 'Monthly' ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    side: BorderSide(
+                                      color: _periodFilter == 'Monthly' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  FilterChip(
+                                    label: const Text('Financial Year', style: TextStyle(fontSize: 12)),
+                                    selected: _periodFilter == 'Financial Year',
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _periodFilter = 'Financial Year';
+                                          _dateRange = null;
+                                        });
+                                      }
+                                    },
+                                    selectedColor: const Color(0xFFEFF6FF),
+                                    checkmarkColor: const Color(0xFF1E3A8A),
+                                    labelStyle: TextStyle(
+                                      color: _periodFilter == 'Financial Year' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                                      fontWeight: _periodFilter == 'Financial Year' ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    side: BorderSide(
+                                      color: _periodFilter == 'Financial Year' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_reportType != 'all' || _dateRange != null || _periodFilter != 'All' || _sortOrder != 'Desc' || _reportType == 'customer') ...[
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -613,7 +813,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                               )
                             else
                               const SizedBox(),
-                            if (_reportType != 'all' || _dateRange != null)
+                            if (_reportType != 'all' || _dateRange != null || _periodFilter != 'All' || _sortOrder != 'Desc')
                               TextButton.icon(
                                 icon: const Icon(Icons.clear, size: 16),
                                 label: const Text('Clear Filters'),
