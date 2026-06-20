@@ -10,6 +10,7 @@ import '../../products/bloc/product_bloc.dart';
 import '../../products/bloc/product_event.dart';
 import '../../orders/bloc/order_event.dart';
 import '../../../core/utils/route_tracker.dart';
+import '../../admin/presentation/admin_reports_screen.dart';
 
 class AccountantDashboard extends StatefulWidget {
   const AccountantDashboard({super.key});
@@ -152,6 +153,19 @@ class _AccountantDashboardState extends State<AccountantDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+                      ).then((_) => RouteTracker.clearRoute());
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _actionCard(
+                    title: 'Reports',
+                    subtitle: 'View and export sales & commissions',
+                    icon: Icons.analytics,
+                    color: Colors.indigo,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AdminReportsScreen()),
                       ).then((_) => RouteTracker.clearRoute());
                     },
                   ),

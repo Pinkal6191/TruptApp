@@ -24,6 +24,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   String _distributorView = 'Retail Sales'; // 'Retail Sales', 'Purchases From Admin'
   int _currentPage = 1;
   static const int _pageSize = 20;
+  String _periodFilter = 'All'; // 'All', 'Daily', 'Monthly', 'Financial Year'
+  String _sortOrder = 'Date Desc'; // 'Date Desc', 'Invoice Asc', 'Invoice Desc'
 
   @override
   void initState() {
@@ -151,7 +153,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             final String? currentUserId = authState is Authenticated ? authState.user.uid : null;
             final String? currentUserName = authState is Authenticated ? authState.user.name : null;
 
-            var sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            var sortedOrders = List<OrderModel>.from(state.orders);
             
             if (!isAdmin && !isAccountant && currentUserId != null) {
               sortedOrders = sortedOrders.where((o) {
@@ -170,6 +172,35 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 }
                 return true;
               }).toList();
+            }
+
+            if (_periodFilter != 'All') {
+              final now = DateTime.now();
+              sortedOrders = sortedOrders.where((o) {
+                final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
+                if (_periodFilter == 'Daily') {
+                  final today = DateTime(now.year, now.month, now.day);
+                  return date.isAtSameMomentAs(today);
+                } else if (_periodFilter == 'Monthly') {
+                  return date.year == now.year && date.month == now.month;
+                } else if (_periodFilter == 'Financial Year') {
+                  int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+                  final fyStart = DateTime(fyStartYear, 4, 1);
+                  final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+                  return date.isAtSameMomentAs(fyStart) || 
+                         date.isAtSameMomentAs(fyEnd) || 
+                         (date.isAfter(fyStart) && date.isBefore(fyEnd));
+                }
+                return true;
+              }).toList();
+            }
+
+            if (_sortOrder == 'Invoice Asc') {
+              sortedOrders.sort((a, b) => a.invoiceNumber.compareTo(b.invoiceNumber));
+            } else if (_sortOrder == 'Invoice Desc') {
+              sortedOrders.sort((a, b) => b.invoiceNumber.compareTo(a.invoiceNumber));
+            } else {
+              sortedOrders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
             }
 
             if (sortedOrders.isEmpty) {
@@ -228,45 +259,91 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
-                        _currentPage = 1;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search by customer, partner, ref, invoice, or product...',
-                      prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () {
-                                _searchController.clear();
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                              _currentPage = 1;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search by customer, partner, ref, invoice, or product...',
+                            prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, color: Colors.grey),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _currentPage = 1;
+                                      });
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _sortOrder,
+                            icon: const Icon(Icons.sort, color: Color(0xFF1E3A8A)),
+                            elevation: 16,
+                            style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 13),
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
                                 setState(() {
-                                  _searchQuery = '';
+                                  _sortOrder = newValue;
                                   _currentPage = 1;
                                 });
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+                              }
+                            },
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'Date Desc',
+                                child: Text('Newest'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Invoice Asc',
+                                child: Text('Inv Asc'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Invoice Desc',
+                                child: Text('Inv Desc'),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
                 Padding(
@@ -372,6 +449,104 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           side: BorderSide(
                             color: _statusFilter == 'Pending' ? const Color(0xFFFBBF24).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(height: 24, width: 1, color: Colors.grey.shade300),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('All Time'),
+                          selected: _periodFilter == 'All',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _periodFilter = 'All';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFEFF6FF),
+                          checkmarkColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: _periodFilter == 'All' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                            fontWeight: _periodFilter == 'All' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _periodFilter == 'All' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Daily'),
+                          selected: _periodFilter == 'Daily',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _periodFilter = 'Daily';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFEFF6FF),
+                          checkmarkColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: _periodFilter == 'Daily' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                            fontWeight: _periodFilter == 'Daily' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _periodFilter == 'Daily' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Monthly'),
+                          selected: _periodFilter == 'Monthly',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _periodFilter = 'Monthly';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFEFF6FF),
+                          checkmarkColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: _periodFilter == 'Monthly' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                            fontWeight: _periodFilter == 'Monthly' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _periodFilter == 'Monthly' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Financial Year'),
+                          selected: _periodFilter == 'Financial Year',
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _periodFilter = 'Financial Year';
+                                _currentPage = 1;
+                              });
+                            }
+                          },
+                          selectedColor: const Color(0xFFEFF6FF),
+                          checkmarkColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: _periodFilter == 'Financial Year' ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                            fontWeight: _periodFilter == 'Financial Year' ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(
+                            color: _periodFilter == 'Financial Year' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
                           ),
                         ),
                       ],
@@ -492,6 +667,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           ),
                         ],
                       ),
+                      if (order.invoiceNumber.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.receipt_outlined, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Invoice: #${order.invoiceNumber}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ],
                       if (order.referredPartnerId.isNotEmpty && order.creatorRole == 'admin') ...[
                         const SizedBox(height: 4),
                         Row(
