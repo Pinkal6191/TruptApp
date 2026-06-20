@@ -56,7 +56,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
+        final authState = context.read<AuthBloc>().state;
+        final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
         double amountPaidNow = currentPending;
+        bool isCorrectionMode = false;
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -127,17 +130,49 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (isAdmin) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Admin Correction Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: const Text('Directly correct the total amount paid so far', style: TextStyle(fontSize: 12)),
+                      value: isCorrectionMode,
+                      activeThumbColor: const Color(0xFF1E3A8A),
+                      onChanged: (val) {
+                        setModalState(() {
+                          isCorrectionMode = val;
+                          if (isCorrectionMode) {
+                            amountPaidNow = 0.0; // reset correction diff
+                          } else {
+                            amountPaidNow = currentPending; // reset normal pay
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextFormField(
-                    initialValue: currentPending.toStringAsFixed(2),
+                    key: ValueKey(isCorrectionMode ? 'correction_field' : 'normal_field'),
+                    initialValue: isCorrectionMode 
+                        ? previouslyPaid.toStringAsFixed(2) 
+                        : currentPending.toStringAsFixed(2),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Amount Received from Customer (₹)',
-                      border: OutlineInputBorder(),
-                      helperText: 'Enter the exact cash received (can be more than pending)',
+                    decoration: InputDecoration(
+                      labelText: isCorrectionMode 
+                          ? 'New Total Paid Amount (₹)' 
+                          : 'Amount Received from Customer (₹)',
+                      border: const OutlineInputBorder(),
+                      helperText: isCorrectionMode 
+                          ? 'Enter the corrected total amount that has been paid' 
+                          : 'Enter the exact cash received (can be more than pending)',
                     ),
                     onChanged: (val) {
                       setModalState(() {
-                        amountPaidNow = double.tryParse(val.trim()) ?? 0.0;
+                        final parsed = double.tryParse(val.trim()) ?? 0.0;
+                        if (isCorrectionMode) {
+                          amountPaidNow = parsed - previouslyPaid;
+                        } else {
+                          amountPaidNow = parsed;
+                        }
                       });
                     },
                   ),
@@ -247,11 +282,21 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
-                        if (amountPaidNow < 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Payment amount cannot be negative')),
-                          );
-                          return;
+                        if (isCorrectionMode) {
+                          final double correctedTotalPaid = previouslyPaid + amountPaidNow;
+                          if (correctedTotalPaid < 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Total paid amount cannot be negative')),
+                            );
+                            return;
+                          }
+                        } else {
+                          if (amountPaidNow < 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Payment amount cannot be negative')),
+                            );
+                            return;
+                          }
                         }
                         final authState = context.read<AuthBloc>().state;
                         final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
