@@ -472,6 +472,17 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   Future<void> _exportPdf(List<Map<String, dynamic>> data, double totalSales) async {
     final pdf = pw.Document();
     
+    List<String> sortedProducts = [];
+    if (_reportType == 'order_wise') {
+      Set<String> productNames = {};
+      for (var row in data) {
+        if (row['itemsMap'] != null) {
+          productNames.addAll((row['itemsMap'] as Map<String, int>).keys);
+        }
+      }
+      sortedProducts = productNames.toList()..sort();
+    }
+    
     List<List<dynamic>> _buildPdfDataRows(List<Map<String, dynamic>> data) {
       if (_reportType == 'expense') {
         final expenseState = context.read<ExpenseBloc>().state;
@@ -491,33 +502,147 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
       return data.map((row) {
         if (_reportType == 'order_wise') {
-          return [
-            row['date'],
-            row['invoiceNumber'],
-            row['name'],
-            row['crateDetails'],
-            row['gstAmount'].toStringAsFixed(0),
-            row['sales'].toStringAsFixed(0)
+          double subtotal = row['subtotal'] ?? 0.0;
+          double gstAmount = row['gstAmount'] ?? 0.0;
+          double sales = row['sales'] ?? 0.0;
+          double paid = row['paid'] ?? 0.0;
+          double balance = sales - paid;
+          Map<String, int> itemsMap = row['itemsMap'] ?? {};
+          
+          List<dynamic> dataRow = [
+            row['invoiceNumber'] ?? '',
+            row['date'] ?? '',
+            row['name'] ?? '',
+            row['customerGst'] ?? '',
           ];
+          
+          for (String product in sortedProducts) {
+            dataRow.add(itemsMap[product]?.toString() ?? '0');
+          }
+          
+          dataRow.addAll([
+            subtotal.toStringAsFixed(2),
+            '5%',
+            gstAmount.toStringAsFixed(2),
+            sales.toStringAsFixed(2),
+            paid.toStringAsFixed(2),
+            balance.toStringAsFixed(2),
+            row['paymentStatus'] ?? ''
+          ]);
+          return dataRow;
         } else if (_reportType == 'distributor') {
           return [
             row['name'],
             row['orders'].toString(),
-            (row['sales'] as double).toStringAsFixed(0),
-            (row['commission'] as double? ?? 0.0).toStringAsFixed(0),
-            (row['paid'] as double).toStringAsFixed(0),
-            ((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(0),
+            ((row['sales'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+            ((row['commission'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+            ((row['paid'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+            (((row['sales'] as num?)?.toDouble() ?? 0.0) - ((row['paid'] as num?)?.toDouble() ?? 0.0)).toStringAsFixed(2),
           ];
         } else {
           return [
             row['name'],
             row['orders'].toString(),
-            (row['sales'] as double).toStringAsFixed(0),
-            (row['paid'] as double).toStringAsFixed(0),
-            ((row['sales'] as double) - (row['paid'] as double)).toStringAsFixed(0),
+            ((row['sales'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+            ((row['paid'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2),
+            (((row['sales'] as num?)?.toDouble() ?? 0.0) - ((row['paid'] as num?)?.toDouble() ?? 0.0)).toStringAsFixed(2),
           ];
         }
       }).toList();
+    }
+
+    Map<int, pw.Alignment> _buildPdfCellAlignments() {
+      if (_reportType == 'expense') {
+        return {
+          0: pw.Alignment.centerLeft,
+          1: pw.Alignment.centerLeft,
+          2: pw.Alignment.centerLeft,
+          3: pw.Alignment.centerRight,
+        };
+      } else if (_reportType == 'order_wise') {
+        final alignments = <int, pw.Alignment>{
+          0: pw.Alignment.centerLeft,
+          1: pw.Alignment.centerLeft,
+          2: pw.Alignment.centerLeft,
+          3: pw.Alignment.centerLeft,
+        };
+        int colIdx = 4;
+        for (var _ in sortedProducts) {
+          alignments[colIdx++] = pw.Alignment.center;
+        }
+        alignments[colIdx++] = pw.Alignment.centerRight; // Subtotal
+        alignments[colIdx++] = pw.Alignment.center;      // GST Rate
+        alignments[colIdx++] = pw.Alignment.centerRight; // GST Amt
+        alignments[colIdx++] = pw.Alignment.centerRight; // Total
+        alignments[colIdx++] = pw.Alignment.centerRight; // Paid
+        alignments[colIdx++] = pw.Alignment.centerRight; // Balance
+        alignments[colIdx++] = pw.Alignment.center;      // Status
+        return alignments;
+      } else if (_reportType == 'distributor') {
+        return {
+          0: pw.Alignment.centerLeft,
+          1: pw.Alignment.center,
+          2: pw.Alignment.centerRight,
+          3: pw.Alignment.centerRight,
+          4: pw.Alignment.centerRight,
+          5: pw.Alignment.centerRight,
+        };
+      } else {
+        return {
+          0: pw.Alignment.centerLeft,
+          1: pw.Alignment.center,
+          2: pw.Alignment.centerRight,
+          3: pw.Alignment.centerRight,
+          4: pw.Alignment.centerRight,
+        };
+      }
+    }
+
+    Map<int, pw.TableColumnWidth>? _buildPdfColumnWidths() {
+      if (_reportType == 'expense') {
+        return {
+          0: const pw.FlexColumnWidth(1.5),
+          1: const pw.FlexColumnWidth(2),
+          2: const pw.FlexColumnWidth(3),
+          3: const pw.FlexColumnWidth(1.5),
+        };
+      } else if (_reportType == 'order_wise') {
+        final widths = <int, pw.TableColumnWidth>{
+          0: const pw.FlexColumnWidth(1.2), // Invoice No
+          1: const pw.FlexColumnWidth(1.2), // Date
+          2: const pw.FlexColumnWidth(2.5), // Customer Name
+          3: const pw.FlexColumnWidth(1.8), // GST Number
+        };
+        int colIdx = 4;
+        for (var _ in sortedProducts) {
+          widths[colIdx++] = const pw.FlexColumnWidth(0.8); // Product columns
+        }
+        widths[colIdx++] = const pw.FlexColumnWidth(1.2); // Subtotal
+        widths[colIdx++] = const pw.FlexColumnWidth(0.9); // GST Rate
+        widths[colIdx++] = const pw.FlexColumnWidth(1.1); // GST Amt
+        widths[colIdx++] = const pw.FlexColumnWidth(1.2); // Total
+        widths[colIdx++] = const pw.FlexColumnWidth(1.2); // Paid
+        widths[colIdx++] = const pw.FlexColumnWidth(1.2); // Balance
+        widths[colIdx++] = const pw.FlexColumnWidth(1.1); // Status
+        return widths;
+      } else if (_reportType == 'distributor') {
+        return {
+          0: const pw.FlexColumnWidth(3),
+          1: const pw.FlexColumnWidth(1),
+          2: const pw.FlexColumnWidth(1.5),
+          3: const pw.FlexColumnWidth(1.5),
+          4: const pw.FlexColumnWidth(1.5),
+          5: const pw.FlexColumnWidth(1.5),
+        };
+      } else {
+        return {
+          0: const pw.FlexColumnWidth(3),
+          1: const pw.FlexColumnWidth(1),
+          2: const pw.FlexColumnWidth(1.5),
+          3: const pw.FlexColumnWidth(1.5),
+          4: const pw.FlexColumnWidth(1.5),
+        };
+      }
     }
     
     pdf.addPage(
@@ -534,74 +659,39 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             pw.TableHelper.fromTextArray(
               context: context,
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, color: PdfColors.white),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: _reportType == 'order_wise' ? 6 : 8, 
+                color: PdfColors.white,
+              ),
               headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
-              cellStyle: const pw.TextStyle(fontSize: 8),
-              cellPadding: const pw.EdgeInsets.all(4),
+              cellStyle: pw.TextStyle(fontSize: _reportType == 'order_wise' ? 6 : 8),
+              cellPadding: _reportType == 'order_wise' 
+                  ? const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 3)
+                  : const pw.EdgeInsets.all(4),
               headers: _reportType == 'expense' 
                   ? ['Date', 'Type', 'Description', 'Amount']
                   : _reportType == 'order_wise'
-                      ? ['Date', 'Invoice', 'Customer', 'Items', 'GST', 'Total']
+                      ? [
+                          'Invoice No',
+                          'Date',
+                          'Customer/Shop Name',
+                          'GST Number',
+                          ...sortedProducts,
+                          'Subtotal',
+                          'GST Rate',
+                          'GST Amt',
+                          'Total',
+                          'Paid',
+                          'Balance',
+                          'Status'
+                        ]
                       : _reportType == 'distributor'
                           ? ['Distributor Name', 'Orders', 'Sales', 'Comm.', 'Paid', 'Bal']
                           : ['Entity Name', 'Orders', 'Total Sales', 'Total Paid', 'Balance'],
               data: _buildPdfDataRows(data),
-              columnWidths: _reportType == 'expense'
-                  ? {
-                      0: const pw.FlexColumnWidth(1.5),
-                      1: const pw.FlexColumnWidth(2),
-                      2: const pw.FlexColumnWidth(3),
-                      3: const pw.FlexColumnWidth(1.5),
-                    }
-                  : _reportType == 'order_wise'
-                      ? {
-                          0: const pw.FlexColumnWidth(1.5),
-                          1: const pw.FlexColumnWidth(1.5),
-                          2: const pw.FlexColumnWidth(2),
-                          3: const pw.FlexColumnWidth(2.5),
-                          4: const pw.FlexColumnWidth(1),
-                          5: const pw.FlexColumnWidth(1),
-                        }
-                      : {
-                          0: const pw.FlexColumnWidth(3),
-                          1: const pw.FlexColumnWidth(1),
-                          2: const pw.FlexColumnWidth(1.5),
-                          3: const pw.FlexColumnWidth(1.5),
-                          4: const pw.FlexColumnWidth(1.5),
-                          5: const pw.FlexColumnWidth(1.5),
-                        },
-              cellAlignments: _reportType == 'expense'
-                  ? {
-                      0: pw.Alignment.centerLeft,
-                      1: pw.Alignment.centerLeft,
-                      2: pw.Alignment.centerLeft,
-                      3: pw.Alignment.centerRight,
-                    }
-                  : _reportType == 'order_wise'
-                      ? {
-                          0: pw.Alignment.centerLeft,
-                          1: pw.Alignment.centerLeft,
-                          2: pw.Alignment.centerLeft,
-                          3: pw.Alignment.centerLeft,
-                          4: pw.Alignment.centerRight,
-                          5: pw.Alignment.centerRight,
-                        }
-                      : _reportType == 'distributor'
-                          ? {
-                              0: pw.Alignment.centerLeft,
-                              1: pw.Alignment.center,
-                              2: pw.Alignment.centerRight,
-                              3: pw.Alignment.centerRight,
-                              4: pw.Alignment.centerRight,
-                              5: pw.Alignment.centerRight,
-                            }
-                          : {
-                              0: pw.Alignment.centerLeft,
-                              1: pw.Alignment.center,
-                              2: pw.Alignment.centerRight,
-                              3: pw.Alignment.centerRight,
-                              4: pw.Alignment.centerRight,
-                            },
+              columnWidths: _buildPdfColumnWidths(),
+              cellAlignments: _buildPdfCellAlignments(),
             ),
           ];
         },
