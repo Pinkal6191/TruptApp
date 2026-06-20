@@ -10,6 +10,7 @@ import 'features/auth/presentation/approval_pending_screen.dart';
 import 'features/admin/presentation/admin_dashboard.dart';
 import 'features/partner/presentation/partner_dashboard.dart';
 import 'features/distributor/presentation/distributor_dashboard.dart';
+import 'features/accountant/presentation/accountant_dashboard.dart';
 import 'features/products/bloc/product_bloc.dart';
 import 'features/products/repository/product_repository.dart';
 import 'features/orders/bloc/order_bloc.dart';
@@ -94,6 +95,8 @@ class AuthWrapper extends StatelessWidget {
             return const AdminDashboard();
           } else if (state.user.role == 'distributor') {
             return const DistributorDashboard();
+          } else if (state.user.role == 'accountant') {
+            return const AccountantDashboard();
           } else {
             return const PartnerDashboard();
           }

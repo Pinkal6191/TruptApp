@@ -78,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Join Trupt Enterprise as a Partner or Distributor',
+                        'Join Trupt Enterprise as a Partner, Distributor, or CA/Accountant',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -314,12 +314,12 @@ class _SignupScreenState extends State<SignupScreen> {
                                           child: GestureDetector(
                                             onTap: () => setState(() => _selectedRole = 'partner'),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(vertical: 14),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
                                               decoration: BoxDecoration(
                                                 color: _selectedRole == 'partner'
                                                     ? const Color(0xFF38BDF8).withValues(alpha: 0.15)
                                                     : Colors.white.withValues(alpha: 0.02),
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
                                                   color: _selectedRole == 'partner'
                                                       ? const Color(0xFF38BDF8)
@@ -334,9 +334,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                                     color: _selectedRole == 'partner'
                                                         ? const Color(0xFF38BDF8)
                                                         : Colors.white.withValues(alpha: 0.6),
-                                                    size: 24,
+                                                    size: 20,
                                                   ),
-                                                  const SizedBox(height: 6),
+                                                  const SizedBox(height: 4),
                                                   Text(
                                                     'Partner',
                                                     style: TextStyle(
@@ -346,7 +346,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                                       fontWeight: _selectedRole == 'partner'
                                                           ? FontWeight.bold
                                                           : FontWeight.normal,
-                                                      fontSize: 14,
+                                                      fontSize: 12,
                                                     ),
                                                   ),
                                                 ],
@@ -354,17 +354,17 @@ class _SignupScreenState extends State<SignupScreen> {
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 16),
+                                        const SizedBox(width: 8),
                                         Expanded(
                                           child: GestureDetector(
                                             onTap: () => setState(() => _selectedRole = 'distributor'),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(vertical: 14),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
                                               decoration: BoxDecoration(
                                                 color: _selectedRole == 'distributor'
                                                     ? const Color(0xFF3B82F6).withValues(alpha: 0.15)
                                                     : Colors.white.withValues(alpha: 0.02),
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
                                                   color: _selectedRole == 'distributor'
                                                       ? const Color(0xFF3B82F6)
@@ -379,9 +379,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                                     color: _selectedRole == 'distributor'
                                                         ? const Color(0xFF3B82F6)
                                                         : Colors.white.withValues(alpha: 0.6),
-                                                    size: 24,
+                                                    size: 20,
                                                   ),
-                                                  const SizedBox(height: 6),
+                                                  const SizedBox(height: 4),
                                                   Text(
                                                     'Distributor',
                                                     style: TextStyle(
@@ -391,7 +391,52 @@ class _SignupScreenState extends State<SignupScreen> {
                                                       fontWeight: _selectedRole == 'distributor'
                                                           ? FontWeight.bold
                                                           : FontWeight.normal,
-                                                      fontSize: 14,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () => setState(() => _selectedRole = 'accountant'),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              decoration: BoxDecoration(
+                                                color: _selectedRole == 'accountant'
+                                                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                                    : Colors.white.withValues(alpha: 0.02),
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: _selectedRole == 'accountant'
+                                                      ? const Color(0xFF10B981)
+                                                      : Colors.white.withValues(alpha: 0.08),
+                                                  width: _selectedRole == 'accountant' ? 2.0 : 1.0,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  Icon(
+                                                    Icons.account_balance_outlined,
+                                                    color: _selectedRole == 'accountant'
+                                                        ? const Color(0xFF10B981)
+                                                        : Colors.white.withValues(alpha: 0.6),
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    'Accountant',
+                                                    style: TextStyle(
+                                                      color: _selectedRole == 'accountant'
+                                                          ? Colors.white
+                                                          : Colors.white.withValues(alpha: 0.6),
+                                                      fontWeight: _selectedRole == 'accountant'
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                      fontSize: 12,
                                                     ),
                                                   ),
                                                 ],

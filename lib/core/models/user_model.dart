@@ -2,7 +2,7 @@ class UserModel {
   final String uid;
   final String name;
   final String mobile;
-  final String role; // 'admin', 'partner', 'distributor'
+  final String role; // 'admin', 'partner', 'distributor', 'accountant'
   final String? gstNumber;
   final bool isApproved;
   final bool isActive;

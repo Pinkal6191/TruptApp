@@ -147,12 +147,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             final authState = context.read<AuthBloc>().state;
             final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
             final bool isDistributor = authState is Authenticated && authState.user.role == 'distributor';
+            final bool isAccountant = authState is Authenticated && authState.user.role == 'accountant';
             final String? currentUserId = authState is Authenticated ? authState.user.uid : null;
             final String? currentUserName = authState is Authenticated ? authState.user.name : null;
 
             var sortedOrders = List<OrderModel>.from(state.orders)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
             
-            if (!isAdmin && currentUserId != null) {
+            if (!isAdmin && !isAccountant && currentUserId != null) {
               sortedOrders = sortedOrders.where((o) {
                 bool isUserRelated = o.createdBy == currentUserId || 
                                      o.referredPartnerId == currentUserId || 
@@ -417,6 +418,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   Widget _buildStandardView(List<OrderModel> orders) {
+    final authState = context.read<AuthBloc>().state;
+    final bool isAccountant = authState is Authenticated && authState.user.role == 'accountant';
     final totalItems = orders.length;
     final totalPages = (totalItems / _pageSize).ceil();
     
@@ -583,7 +586,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       Row(
                         children: [
                           // Delete Button
-                          if (order.deliveryStatus != 'Delivered' && order.paymentStatus != 'Paid')
+                          if (!isAccountant && order.deliveryStatus != 'Delivered' && order.paymentStatus != 'Paid')
                             IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.red),
                               tooltip: 'Delete Order',
@@ -624,7 +627,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               },
                             ),
                           const Spacer(),
-                          if (order.deliveryStatus != 'Delivered')
+                          if (!isAccountant && order.deliveryStatus != 'Delivered')
                             TextButton.icon(
                               icon: const Icon(Icons.check_circle_outline, size: 16),
                               label: const Text('Mark Delivered', style: TextStyle(fontSize: 12)),
@@ -644,7 +647,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               },
                             ),
                           const SizedBox(width: 8),
-                          if (order.paymentStatus != 'Paid')
+                          if (!isAccountant && order.paymentStatus != 'Paid')
                             TextButton.icon(
                               icon: const Icon(Icons.payments_outlined, size: 16),
                               label: const Text('Mark Paid', style: TextStyle(fontSize: 12)),
@@ -663,7 +666,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
                               },
                             )
-                          else
+                          else if (!isAccountant)
                             TextButton.icon(
                               icon: const Icon(Icons.money_off_outlined, size: 16),
                               label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),

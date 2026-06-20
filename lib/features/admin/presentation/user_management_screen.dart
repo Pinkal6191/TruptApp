@@ -120,7 +120,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
-                        items: ['All', 'admin', 'distributor', 'partner']
+                        items: ['All', 'admin', 'distributor', 'partner', 'accountant']
                             .map((role) => DropdownMenuItem(value: role, child: Text(role.toUpperCase())))
                             .toList(),
                         onChanged: (val) => setState(() {
@@ -534,7 +534,7 @@ class _UserFormSheetState extends State<UserFormSheet> {
               DropdownButtonFormField<String>(
                 value: _role,
                 decoration: const InputDecoration(labelText: 'Role', border: OutlineInputBorder()),
-                items: ['admin', 'distributor', 'partner']
+                items: ['admin', 'distributor', 'partner', 'accountant']
                     .map((r) => DropdownMenuItem(value: r, child: Text(r.toUpperCase())))
                     .toList(),
                 onChanged: (v) => setState(() => _role = v!),
