@@ -86,7 +86,7 @@ class InvoiceService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('TAX INVOICE', style: pw.TextStyle(font: boldFont, fontSize: 28, color: PdfColors.blue800)),
+                      pw.Text(withGst ? 'TAX INVOICE' : 'INVOICE', style: pw.TextStyle(font: boldFont, fontSize: 28, color: PdfColors.blue800)),
                       pw.SizedBox(height: 4),
                       pw.Text('Date: ${DateFormat('dd MMM yyyy').format(order.createdAt)}', style: pw.TextStyle(font: font)),
                       pw.Text('Invoice No: $invNo', style: pw.TextStyle(font: font)),
@@ -108,7 +108,7 @@ class InvoiceService {
               pw.SizedBox(height: 24),
 
               // Items Table
-              _buildItemsTable(order.items, font, boldFont),
+              _buildItemsTable(order.items, font, boldFont, withGst: withGst),
               pw.SizedBox(height: 24),
 
               // Totals
@@ -199,33 +199,51 @@ class InvoiceService {
     await Printing.sharePdf(bytes: bytes, filename: 'Invoice_${order.shopName.isEmpty ? order.partnerName : order.shopName}_$invNo.pdf');
   }
 
-  static pw.Widget _buildItemsTable(List<OrderItemModel> items, pw.Font font, pw.Font boldFont) {
+  static pw.Widget _buildItemsTable(List<OrderItemModel> items, pw.Font font, pw.Font boldFont, {bool withGst = true}) {
     return pw.TableHelper.fromTextArray(
-      headers: ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Total Price', 'GST (5% Incl.)', 'Taxable Value'],
+      headers: withGst 
+          ? ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Total Price', 'GST (5% Incl.)', 'Taxable Value']
+          : ['Item Description', 'Qty (Crates)', 'Rate/Crate', 'Total Price'],
       data: items.map((item) {
         final double gross = item.quantity * item.pricePerCrate;
-        final double taxable = gross / 1.05;
-        final double gst = gross - taxable;
-        return [
-          item.productName,
-          '${item.quantity} caret',
-          'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
-          'Rs. ${gross.toStringAsFixed(2)}',
-          'Rs. ${gst.toStringAsFixed(2)}',
-          'Rs. ${taxable.toStringAsFixed(2)}',
-        ];
+        if (withGst) {
+          final double taxable = gross / 1.05;
+          final double gst = gross - taxable;
+          return [
+            item.productName,
+            '${item.quantity} caret',
+            'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
+            'Rs. ${gross.toStringAsFixed(2)}',
+            'Rs. ${gst.toStringAsFixed(2)}',
+            'Rs. ${taxable.toStringAsFixed(2)}',
+          ];
+        } else {
+          return [
+            item.productName,
+            '${item.quantity} caret',
+            'Rs. ${item.pricePerCrate.toStringAsFixed(2)}',
+            'Rs. ${gross.toStringAsFixed(2)}',
+          ];
+        }
       }).toList(),
       headerStyle: pw.TextStyle(font: boldFont, color: PdfColors.white, fontSize: 8),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
       cellStyle: pw.TextStyle(font: font, fontSize: 8),
-      cellAlignments: {
-        0: pw.Alignment.centerLeft,
-        1: pw.Alignment.center,
-        2: pw.Alignment.centerRight,
-        3: pw.Alignment.centerRight,
-        4: pw.Alignment.centerRight,
-        5: pw.Alignment.centerRight,
-      },
+      cellAlignments: withGst 
+          ? {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerRight,
+              3: pw.Alignment.centerRight,
+              4: pw.Alignment.centerRight,
+              5: pw.Alignment.centerRight,
+            }
+          : {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerRight,
+              3: pw.Alignment.centerRight,
+            },
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
     );
   }
