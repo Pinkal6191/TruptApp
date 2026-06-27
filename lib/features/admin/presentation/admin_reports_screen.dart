@@ -105,29 +105,35 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   List<ExpenseModel> _processExpenses(List<ExpenseModel> rawExpenses) {
     List<ExpenseModel> filtered = rawExpenses;
-    if (_periodFilter != 'All') {
+    if (_periodFilter == 'Daily') {
       final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
       filtered = filtered.where((e) {
         final date = DateTime(e.date.year, e.date.month, e.date.day);
-        if (_periodFilter == 'Daily') {
-          final today = DateTime(now.year, now.month, now.day);
-          return date.isAtSameMomentAs(today);
-        } else if (_periodFilter == 'Monthly') {
-          return date.year == now.year && date.month == now.month;
-        } else if (_periodFilter == 'Financial Year') {
-          int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
-          final fyStart = DateTime(fyStartYear, 4, 1);
-          final fyEnd = DateTime(fyStartYear + 1, 3, 31);
-          return date.isAtSameMomentAs(fyStart) || 
-                 date.isAtSameMomentAs(fyEnd) || 
-                 (date.isAfter(fyStart) && date.isBefore(fyEnd));
-        }
-        return true;
+        return date.isAtSameMomentAs(today);
       }).toList();
-    } else if (_dateRange != null) {
+    } else if (_periodFilter == 'Monthly') {
+      final now = DateTime.now();
       filtered = filtered.where((e) {
-        return e.date.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-               e.date.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+        return e.date.year == now.year && e.date.month == now.month;
+      }).toList();
+    } else if (_periodFilter == 'Financial Year') {
+      final now = DateTime.now();
+      int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+      final fyStart = DateTime(fyStartYear, 4, 1);
+      final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+      filtered = filtered.where((e) {
+        final date = DateTime(e.date.year, e.date.month, e.date.day);
+        return (date.isAtSameMomentAs(fyStart) || date.isAfter(fyStart)) &&
+               (date.isAtSameMomentAs(fyEnd) || date.isBefore(fyEnd));
+      }).toList();
+    } else if (_periodFilter == 'Custom' && _dateRange != null) {
+      final start = DateTime(_dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
+      final end = DateTime(_dateRange!.end.year, _dateRange!.end.month, _dateRange!.end.day);
+      filtered = filtered.where((e) {
+        final date = DateTime(e.date.year, e.date.month, e.date.day);
+        return (date.isAtSameMomentAs(start) || date.isAfter(start)) &&
+               (date.isAtSameMomentAs(end) || date.isBefore(end));
       }).toList();
     }
 
@@ -149,31 +155,35 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     // Exclude distributor individual retail orders to avoid duplicate/inflated calculations
     List<OrderModel> filtered = orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
 
-    if (_periodFilter != 'All') {
+    if (_periodFilter == 'Daily') {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      filtered = filtered.where((o) {
+        final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
+        return date.isAtSameMomentAs(today);
+      }).toList();
+    } else if (_periodFilter == 'Monthly') {
       final now = DateTime.now();
       filtered = filtered.where((o) {
-        final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
-        if (_periodFilter == 'Daily') {
-          final today = DateTime(now.year, now.month, now.day);
-          return date.isAtSameMomentAs(today);
-        } else if (_periodFilter == 'Monthly') {
-          return date.year == now.year && date.month == now.month;
-        } else if (_periodFilter == 'Financial Year') {
-          int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
-          final fyStart = DateTime(fyStartYear, 4, 1);
-          final fyEnd = DateTime(fyStartYear + 1, 3, 31);
-          return date.isAtSameMomentAs(fyStart) || 
-                 date.isAtSameMomentAs(fyEnd) || 
-                 (date.isAfter(fyStart) && date.isBefore(fyEnd));
-        }
-        return true;
+        return o.createdAt.year == now.year && o.createdAt.month == now.month;
       }).toList();
-    } else if (_dateRange != null) {
+    } else if (_periodFilter == 'Financial Year') {
+      final now = DateTime.now();
+      int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+      final fyStart = DateTime(fyStartYear, 4, 1);
+      final fyEnd = DateTime(fyStartYear + 1, 3, 31);
       filtered = filtered.where((o) {
         final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
-        final start = DateTime(_dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
-        final end = DateTime(_dateRange!.end.year, _dateRange!.end.month, _dateRange!.end.day);
-        return date.isAtSameMomentAs(start) || date.isAtSameMomentAs(end) || (date.isAfter(start) && date.isBefore(end));
+        return (date.isAtSameMomentAs(fyStart) || date.isAfter(fyStart)) &&
+               (date.isAtSameMomentAs(fyEnd) || date.isBefore(fyEnd));
+      }).toList();
+    } else if (_periodFilter == 'Custom' && _dateRange != null) {
+      final start = DateTime(_dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
+      final end = DateTime(_dateRange!.end.year, _dateRange!.end.month, _dateRange!.end.day);
+      filtered = filtered.where((o) {
+        final date = DateTime(o.createdAt.year, o.createdAt.month, o.createdAt.day);
+        return (date.isAtSameMomentAs(start) || date.isAfter(start)) &&
+               (date.isAtSameMomentAs(end) || date.isBefore(end));
       }).toList();
     }
 
