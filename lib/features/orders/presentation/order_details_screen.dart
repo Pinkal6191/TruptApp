@@ -761,55 +761,54 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 12),
-                ],
-                
-                if (!(_currentOrder.deliveryStatus == 'Delivered' && _currentOrder.paymentStatus == 'Paid')) ...[
-                  if (isAdmin && _currentOrder.paymentStatus == 'Paid') ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.money_off),
-                        label: const Text('Mark Unpaid'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade400,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        onPressed: () {
-                          final userId = isAdmin ? null : authState.user.uid;
-                          final userName = isAdmin ? null : authState.user.name;
-                          context.read<OrderBloc>().add(UpdateOrderPayment(
-                                orderId: _currentOrder.id,
-                                paidAmount: 0.0,
-                                paymentStatus: 'Pending',
-                                userId: userId,
-                                userName: userName,
-                              ));
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Order marked as Pending (Unpaid)')),
-                          );
-                        },
-                      ),
-                    ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.payments),
-                        label: const Text('Record Payment'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF59E0B),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        onPressed: _recordPayment,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                ],
+                   const SizedBox(height: 12),
+                 ],
+                 // Show Mark Unpaid for admin even when Delivered+Paid; show Record Payment for non-fully-paid orders
+                 if (isAdmin && _currentOrder.paymentStatus == 'Paid') ...[
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton.icon(
+                       icon: const Icon(Icons.money_off),
+                       label: const Text('Mark Unpaid'),
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: Colors.red.shade400,
+                         foregroundColor: Colors.white,
+                         padding: const EdgeInsets.symmetric(vertical: 16),
+                       ),
+                       onPressed: () {
+                         final userId = isAdmin ? null : authState.user.uid;
+                         final userName = isAdmin ? null : authState.user.name;
+                         context.read<OrderBloc>().add(UpdateOrderPayment(
+                               orderId: _currentOrder.id,
+                               paidAmount: 0.0,
+                               paymentStatus: 'Pending',
+                               userId: userId,
+                               userName: userName,
+                             ));
+                         Navigator.pop(context);
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(content: Text('Order marked as Pending (Unpaid)')),
+                         );
+                       },
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                 ] else if (_currentOrder.paymentStatus != 'Paid') ...[
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton.icon(
+                       icon: const Icon(Icons.payments),
+                       label: const Text('Record Payment'),
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: const Color(0xFFF59E0B),
+                         foregroundColor: Colors.white,
+                         padding: const EdgeInsets.symmetric(vertical: 16),
+                       ),
+                       onPressed: _recordPayment,
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                 ],
 
                 if (isAdmin || (_currentOrder.deliveryStatus != 'Delivered' && _currentOrder.paymentStatus != 'Paid')) ...[
                   SizedBox(
