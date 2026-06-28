@@ -657,73 +657,116 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   ],
                 ),
               ],
-              // Payment History Section
-              if (_currentOrder.paymentHistory.isNotEmpty) ...[
+              // Payment History Section — show if there's real history OR old order with paid amount
+              if (_currentOrder.paymentHistory.isNotEmpty || _currentOrder.paidAmount > 0) ...[
                 const SizedBox(height: 24),
                 const Text('Payment History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _currentOrder.paymentHistory.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
-                    itemBuilder: (context, index) {
-                      // Show newest first
-                      final entry = _currentOrder.paymentHistory[_currentOrder.paymentHistory.length - 1 - index];
-                      final double amount = (entry['amount'] as num).toDouble();
-                      final DateTime date = (entry['date'] as Timestamp).toDate();
-                      final String note = entry['note'] ?? '';
-                      final bool isPositive = amount >= 0;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isPositive ? Colors.green.shade50 : Colors.red.shade50,
-                              ),
-                              child: Icon(
-                                isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-                                color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
-                                size: 20,
-                              ),
+                Builder(builder: (context) {
+                  // Build display list — real history entries OR synthetic entry for old orders
+                  final List<Map<String, dynamic>> displayEntries;
+                  if (_currentOrder.paymentHistory.isNotEmpty) {
+                    // Real history — show newest first
+                    displayEntries = _currentOrder.paymentHistory.reversed.toList();
+                  } else {
+                    // Old order: synthesize a single entry from paidAmount (display only, no DB write)
+                    displayEntries = [
+                      {
+                        'amount': _currentOrder.paidAmount,
+                        'date': _currentOrder.createdAt,
+                        'note': 'Payment recorded (historical)',
+                        'isHistorical': true,
+                      }
+                    ];
+                  }
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
+                    ),
+                    child: Column(
+                      children: [
+                        if (_currentOrder.paymentHistory.isEmpty && _currentOrder.paidAmount > 0)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, size: 14, color: Colors.orange.shade700),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Exact payment date unavailable for this order (recorded before history tracking)',
+                                    style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontStyle: FontStyle.italic),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: displayEntries.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+                          itemBuilder: (context, index) {
+                            final entry = displayEntries[index];
+                            final double amount = (entry['amount'] as num).toDouble();
+                            final bool isHistorical = entry['isHistorical'] == true;
+                            final DateTime date = entry['date'] is Timestamp
+                                ? (entry['date'] as Timestamp).toDate()
+                                : entry['date'] as DateTime;
+                            final String note = entry['note'] ?? '';
+                            final bool isPositive = amount >= 0;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
                                 children: [
-                                  Text(note, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                  const SizedBox(height: 2),
+                                  Container(
+                                    width: 40, height: 40,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isHistorical ? Colors.grey.shade100 : (isPositive ? Colors.green.shade50 : Colors.red.shade50),
+                                    ),
+                                    child: Icon(
+                                      isHistorical ? Icons.history : (isPositive ? Icons.arrow_downward : Icons.arrow_upward),
+                                      color: isHistorical ? Colors.grey.shade600 : (isPositive ? Colors.green.shade700 : Colors.red.shade700),
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(note, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          isHistorical
+                                              ? 'Order date: ${DateFormat('dd MMM yyyy').format(date)}'
+                                              : DateFormat('dd MMM yyyy, hh:mm a').format(date),
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   Text(
-                                    DateFormat('dd MMM yyyy, hh:mm a').format(date),
-                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    '${isPositive ? '+' : ''}₹${amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: isHistorical ? Colors.grey.shade700 : (isPositive ? Colors.green.shade700 : Colors.red.shade700),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              '${isPositive ? '+' : ''}₹${amount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                }),
               ],
 
               // Order Actions
