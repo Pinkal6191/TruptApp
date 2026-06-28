@@ -28,6 +28,7 @@ class OrderModel {
   final String additionalNote;
   final double remainingAmount;
   final String referredPartnerId;
+  final List<Map<String, dynamic>> paymentHistory; // [{amount, date, note}]
 
   OrderModel({
     required this.id,
@@ -55,8 +56,10 @@ class OrderModel {
     this.orderReference = 'Direct (Online / Call)',
     this.additionalNote = '',
     this.referredPartnerId = '',
+    List<Map<String, dynamic>>? paymentHistory,
     double? remainingAmount,
-  }) : this.remainingAmount = remainingAmount ?? (finalAmount - paidAmount);
+  }) : this.remainingAmount = remainingAmount ?? (finalAmount - paidAmount),
+       this.paymentHistory = paymentHistory ?? [];
 
   Map<String, dynamic> toMap() {
     return {
@@ -85,6 +88,7 @@ class OrderModel {
       'orderReference': orderReference,
       'additionalNote': additionalNote,
       'referredPartnerId': referredPartnerId,
+      'paymentHistory': paymentHistory,
     };
   }
 
@@ -121,6 +125,9 @@ class OrderModel {
       orderReference: map['orderReference'] ?? 'Direct (Online / Call)',
       additionalNote: map['additionalNote'] ?? '',
       referredPartnerId: map['referredPartnerId'] ?? '',
+      paymentHistory: List<Map<String, dynamic>>.from(
+        (map['paymentHistory'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+      ),
     );
   }
 }

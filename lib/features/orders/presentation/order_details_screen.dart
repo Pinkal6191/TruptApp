@@ -309,6 +309,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               orderId: _currentOrder.id,
                               paidAmount: totalReceivedAmount,
                               paymentStatus: calculatedStatus,
+                              previousPaidAmount: previouslyPaid,
                               userId: userId,
                               userName: userName,
                             ));
@@ -656,7 +657,75 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   ],
                 ),
               ],
-              
+              // Payment History Section
+              if (_currentOrder.paymentHistory.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const Text('Payment History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _currentOrder.paymentHistory.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+                    itemBuilder: (context, index) {
+                      // Show newest first
+                      final entry = _currentOrder.paymentHistory[_currentOrder.paymentHistory.length - 1 - index];
+                      final double amount = (entry['amount'] as num).toDouble();
+                      final DateTime date = (entry['date'] as Timestamp).toDate();
+                      final String note = entry['note'] ?? '';
+                      final bool isPositive = amount >= 0;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isPositive ? Colors.green.shade50 : Colors.red.shade50,
+                              ),
+                              child: Icon(
+                                isPositive ? Icons.arrow_downward : Icons.arrow_upward,
+                                color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(note, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    DateFormat('dd MMM yyyy, hh:mm a').format(date),
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '${isPositive ? '+' : ''}₹${amount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+
               // Order Actions
               if (canManage) ...[
                 const SizedBox(height: 32),

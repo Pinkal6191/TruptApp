@@ -150,19 +150,36 @@ class OrderRepository {
     }
   }
 
-  Future<void> updateOrderPayment(String orderId, double paidAmount, String paymentStatus) async {
+  Future<void> updateOrderPayment(String orderId, double paidAmount, String paymentStatus, {double? previousPaidAmount, String? paymentNote}) async {
     try {
       final doc = await _firestore.collection(collectionName).doc(orderId).get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         final double finalAmount = (data['finalAmount'] ?? 0.0).toDouble();
+        final double prevPaid = previousPaidAmount ?? (data['paidAmount'] ?? 0.0).toDouble();
         // Store actual remaining (can be negative to indicate overpayment/change due to customer)
         final double remaining = finalAmount - paidAmount;
-        await _firestore.collection(collectionName).doc(orderId).update({
+
+        // Calculate the incremental payment made this time
+        final double incrementalPayment = paidAmount - prevPaid;
+
+        final Map<String, dynamic> updateData = {
           'paidAmount': paidAmount,
           'remainingAmount': remaining,
           'paymentStatus': paymentStatus,
-        });
+        };
+
+        // Only log to history when money is actually being added or a reversal happens
+        if (incrementalPayment != 0) {
+          final historyEntry = {
+            'amount': incrementalPayment,
+            'date': Timestamp.fromDate(DateTime.now()),
+            'note': paymentStatus == 'Pending' ? 'Marked Unpaid' : (paymentNote ?? (incrementalPayment > 0 ? 'Payment received' : 'Payment reversed')),
+          };
+          updateData['paymentHistory'] = FieldValue.arrayUnion([historyEntry]);
+        }
+
+        await _firestore.collection(collectionName).doc(orderId).update(updateData);
       }
     } catch (e) {
       throw Exception('Failed to update payment: $e');
