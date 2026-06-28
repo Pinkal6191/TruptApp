@@ -996,20 +996,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
       final List<CustomerModel> processedCustomers = [];
 
       bool matches(CustomerModel c, OrderModel order) {
-        int matchCount = 0;
-        if (c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim() &&
-            c.shopName.trim().isNotEmpty) {
-          matchCount++;
-        }
-        if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
-            c.mobileNumber.trim() == order.customerMobile.trim()) {
-          matchCount++;
-        }
-        if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
-            c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
-          matchCount++;
-        }
-        return matchCount >= 2;
+        // Shop name alone is the primary key — if shop name matches AND is non-empty, it's the same customer
+        final shopMatch = c.shopName.toLowerCase().trim().isNotEmpty &&
+            order.shopName.toLowerCase().trim().isNotEmpty &&
+            c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim();
+        if (shopMatch) return true;
+
+        // Mobile alone is also a strong identifier
+        final mobileMatch = c.mobileNumber.trim().isNotEmpty &&
+            order.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() == order.customerMobile.trim();
+        if (mobileMatch) return true;
+
+        return false;
       }
 
       for (var order in retailOrders) {
@@ -1047,13 +1046,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             processedCustomers.add(CustomerModel(
               id: ext.id,
-              shopName: ext.shopName,
-              mobileNumber: ext.mobileNumber,
+              shopName: order.shopName.trim().isNotEmpty ? order.shopName.trim() : ext.shopName,
+              mobileNumber: order.customerMobile.trim().isNotEmpty ? order.customerMobile.trim() : ext.mobileNumber,
               address: address,
               gstNumber: gst,
               partnerId: partner,
-              totalOrders: 1,
+              totalOrders: 1, // will be accumulated as more orders are processed
               totalAmountSpent: order.finalAmount,
+              isPrivateLabel: ext.isPrivateLabel,
               createdAt: ext.createdAt.isBefore(order.createdAt) ? ext.createdAt : order.createdAt,
             ));
           } else {
@@ -1071,6 +1071,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               partnerId: partner,
               totalOrders: 1,
               totalAmountSpent: order.finalAmount,
+              isPrivateLabel: order.orderType == 'private_label',
               createdAt: order.createdAt,
             ));
           }
