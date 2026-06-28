@@ -102,7 +102,8 @@ class _PartnerDashboardState extends State<PartnerDashboard> {
                     List<OrderModel> partnerOrders = [];
 
                     if (state is OrdersLoaded) {
-                      for (var o in state.orders) {
+                      final filteredOrders = state.orders.where((o) => !(o.creatorRole == 'distributor' && !o.isSupplyOrder)).toList();
+                      for (var o in filteredOrders) {
                         // Global Company Stats
                         truptTotalOrders += o.finalAmount;
                         truptCollected += o.paidAmount;

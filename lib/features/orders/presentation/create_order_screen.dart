@@ -543,7 +543,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       id: widget.existingOrder?.id ?? '',
       createdBy: widget.existingOrder?.createdBy ?? uid,
       targetUserId: targetUid,
-      partnerName: displayPartnerName,
+      partnerName: (widget.existingOrder != null && widget.existingOrder!.creatorRole != 'admin')
+          ? widget.existingOrder!.partnerName
+          : displayPartnerName,
       shopName: _shopNameController.text.trim(),
       customerMobile: _mobileController.text.trim(),
       customerAddress: _addressController.text.trim(),
