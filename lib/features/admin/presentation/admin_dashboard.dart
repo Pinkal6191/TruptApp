@@ -977,7 +977,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!mounted) return;
     
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Starting Customer Directory Sync...')),
+      const SnackBar(content: Text('Starting Customer Directory Sync & Deduplication...')),
     );
 
     try {
@@ -994,18 +994,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
           .toList();
 
       final List<CustomerModel> processedCustomers = [];
+      final List<String> deletedCustomerIds = [];
 
       bool matches(CustomerModel c, OrderModel order) {
-        // Shop name alone is the primary key — if shop name matches AND is non-empty, it's the same customer
         final shopMatch = c.shopName.toLowerCase().trim().isNotEmpty &&
             order.shopName.toLowerCase().trim().isNotEmpty &&
             c.shopName.toLowerCase().trim() == order.shopName.toLowerCase().trim();
         if (shopMatch) return true;
 
-        // Mobile alone is also a strong identifier
         final mobileMatch = c.mobileNumber.trim().isNotEmpty &&
             order.customerMobile.trim().isNotEmpty &&
             c.mobileNumber.trim() == order.customerMobile.trim();
+        if (mobileMatch) return true;
+
+        return false;
+      }
+
+      bool matchesCustomer(CustomerModel c1, CustomerModel c2) {
+        final shopMatch = c1.shopName.toLowerCase().trim().isNotEmpty &&
+            c2.shopName.toLowerCase().trim().isNotEmpty &&
+            c1.shopName.toLowerCase().trim() == c2.shopName.toLowerCase().trim();
+        if (shopMatch) return true;
+
+        final mobileMatch = c1.mobileNumber.trim().isNotEmpty &&
+            c2.mobileNumber.trim().isNotEmpty &&
+            c1.mobileNumber.trim() == c2.mobileNumber.trim();
         if (mobileMatch) return true;
 
         return false;
@@ -1031,13 +1044,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
             partnerId: partner,
             totalOrders: current.totalOrders + 1,
             totalAmountSpent: current.totalAmountSpent + order.finalAmount,
+            isPrivateLabel: current.isPrivateLabel,
             createdAt: current.createdAt.isBefore(order.createdAt) ? current.createdAt : order.createdAt,
           );
         } else {
-          int existingIndex = existingCustomers.indexWhere((c) => matches(c, order));
+          // Find all matching existing customers
+          final List<int> matchingIndices = [];
+          for (int i = 0; i < existingCustomers.length; i++) {
+            if (matches(existingCustomers[i], order)) {
+              matchingIndices.add(i);
+            }
+          }
 
-          if (existingIndex != -1) {
-            final ext = existingCustomers[existingIndex];
+          if (matchingIndices.isNotEmpty) {
+            final ext = existingCustomers[matchingIndices[0]];
             
             String address = ext.address.trim().isEmpty ? order.customerAddress.trim() : ext.address;
             String gst = ext.gstNumber.trim().isEmpty ? order.customerGstNumber.trim() : ext.gstNumber;
@@ -1051,11 +1071,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               address: address,
               gstNumber: gst,
               partnerId: partner,
-              totalOrders: 1, // will be accumulated as more orders are processed
+              totalOrders: 1,
               totalAmountSpent: order.finalAmount,
               isPrivateLabel: ext.isPrivateLabel,
               createdAt: ext.createdAt.isBefore(order.createdAt) ? ext.createdAt : order.createdAt,
             ));
+
+            // Mark duplicate existing customers for deletion
+            for (int i = 1; i < matchingIndices.length; i++) {
+              deletedCustomerIds.add(existingCustomers[matchingIndices[i]].id);
+            }
           } else {
             final newId = FirebaseFirestore.instance.collection('customers').doc().id;
             final partner = order.referredPartnerId.isNotEmpty 
@@ -1078,9 +1103,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         }
       }
 
+      // Add unmatched existing customers, but filter out duplicates
       for (var ext in existingCustomers) {
-        bool alreadyIncluded = processedCustomers.any((c) => c.id == ext.id);
-        if (!alreadyIncluded) {
+        if (processedCustomers.any((c) => c.id == ext.id) || deletedCustomerIds.contains(ext.id)) {
+          continue;
+        }
+
+        // Check if this unmatched customer matches any customer in processedCustomers
+        bool isDupe = processedCustomers.any((c) => matchesCustomer(c, ext));
+        if (isDupe) {
+          deletedCustomerIds.add(ext.id);
+        } else {
           processedCustomers.add(ext);
         }
       }
@@ -1089,9 +1122,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
       int chunkCount = 0;
       WriteBatch batch = firestore.batch();
 
+      // Write unique/updated customers
       for (var customer in processedCustomers) {
         final docRef = firestore.collection('customers').doc(customer.id);
         batch.set(docRef, customer.toMap());
+        chunkCount++;
+
+        if (chunkCount >= 200) {
+          await batch.commit();
+          batch = firestore.batch();
+          chunkCount = 0;
+        }
+      }
+      
+      // Delete duplicate customers
+      for (var id in deletedCustomerIds) {
+        final docRef = firestore.collection('customers').doc(id);
+        batch.delete(docRef);
         chunkCount++;
 
         if (chunkCount >= 200) {
@@ -1110,7 +1157,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sync complete! Found ${processedCustomers.length} unique customers.'),
+            content: Text('Sync complete! Found ${processedCustomers.length} unique customers. Cleaned ${deletedCustomerIds.length} duplicates.'),
             backgroundColor: Colors.green,
           ),
         );
