@@ -32,6 +32,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   DateTimeRange? _dateRange;
   String _periodFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
   String _sortOrder = 'Sales Desc'; // Default to Sales Desc for aggregated, will switch to Date Desc for order_wise/expense
+  bool _showUnpaidOnly = false; // admin-only: show only Pending/Partial orders
 
   @override
   void initState() {
@@ -62,6 +63,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       _dateRange = null;
       _periodFilter = 'All';
       _sortOrder = 'Sales Desc';
+      _showUnpaidOnly = false;
     });
   }
 
@@ -185,6 +187,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         return (date.isAtSameMomentAs(start) || date.isAfter(start)) &&
                (date.isAtSameMomentAs(end) || date.isBefore(end));
       }).toList();
+    }
+
+    // Admin-only unpaid filter
+    if (_showUnpaidOnly) {
+      filtered = filtered.where((o) => o.paymentStatus != 'Paid').toList();
     }
 
     if (_reportType == 'partner') {
@@ -961,6 +968,28 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                       color: _periodFilter == 'Financial Year' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
                                     ),
                                   ),
+                                   if (!isAccountant) ...[  
+                                     const SizedBox(width: 6),
+                                     FilterChip(
+                                       label: const Text('Unpaid Only', style: TextStyle(fontSize: 12)),
+                                       selected: _showUnpaidOnly,
+                                       onSelected: (selected) {
+                                         setState(() {
+                                           _showUnpaidOnly = selected;
+                                         });
+                                       },
+                                       selectedColor: const Color(0xFFFEF2F2),
+                                       checkmarkColor: const Color(0xFFDC2626),
+                                       labelStyle: TextStyle(
+                                         color: _showUnpaidOnly ? const Color(0xFFDC2626) : Colors.grey.shade600,
+                                         fontWeight: _showUnpaidOnly ? FontWeight.bold : FontWeight.normal,
+                                       ),
+                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                       side: BorderSide(
+                                         color: _showUnpaidOnly ? const Color(0xFFDC2626).withValues(alpha: 0.5) : Colors.grey.shade300,
+                                       ),
+                                     ),
+                                   ],
                                 ],
                               ),
                             ),
