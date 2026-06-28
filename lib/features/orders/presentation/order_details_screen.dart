@@ -765,7 +765,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ],
                 
                 if (!(_currentOrder.deliveryStatus == 'Delivered' && _currentOrder.paymentStatus == 'Paid')) ...[
-                  if (_currentOrder.paymentStatus == 'Paid') ...[
+                  if (isAdmin && _currentOrder.paymentStatus == 'Paid') ...[
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

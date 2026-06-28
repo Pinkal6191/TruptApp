@@ -866,7 +866,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
                               },
                             )
-                          else if (!isAccountant)
+                          else if (context.read<AuthBloc>().state is Authenticated && (context.read<AuthBloc>().state as Authenticated).user.role == 'admin')
                             TextButton.icon(
                               icon: const Icon(Icons.money_off_outlined, size: 16),
                               label: const Text('Mark Unpaid', style: TextStyle(fontSize: 12)),
