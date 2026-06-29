@@ -3,21 +3,53 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/expense_model.dart';
 
-class AdminPartnerExpensesScreen extends StatelessWidget {
+class AdminPartnerExpensesScreen extends StatefulWidget {
   const AdminPartnerExpensesScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AdminPartnerExpensesScreen> createState() => _AdminPartnerExpensesScreenState();
+}
+
+class _AdminPartnerExpensesScreenState extends State<AdminPartnerExpensesScreen> {
+  String _searchQuery = '';
+  String _statusFilter = 'All'; // All, Pending, Approved, Rejected
+  String _dateFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
+  DateTimeRange? _customDateRange;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _selectCustomDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _customDateRange,
+    );
+    if (picked != null) {
+      setState(() {
+        _customDateRange = picked;
+        _dateFilter = 'Custom';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Partner Expenses', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1A237E),
         iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('expenses')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -30,7 +62,59 @@ class AdminPartnerExpensesScreen extends StatelessWidget {
               .map((doc) => ExpenseModel.fromFirestore(doc))
               .where((e) => e.userId != null)
               .toList();
-              
+
+          // 1. Apply Status Filter
+          if (_statusFilter != 'All') {
+            expenses = expenses.where((e) {
+              if (_statusFilter == 'Approved') {
+                return e.status == 'Approved' || e.status == 'Settled';
+              }
+              return e.status == _statusFilter;
+            }).toList();
+          }
+
+          // 2. Apply Date Filter
+          final now = DateTime.now();
+          if (_dateFilter == 'Daily') {
+            final today = DateTime(now.year, now.month, now.day);
+            expenses = expenses.where((e) {
+              final date = DateTime(e.date.year, e.date.month, e.date.day);
+              return date.isAtSameMomentAs(today);
+            }).toList();
+          } else if (_dateFilter == 'Monthly') {
+            expenses = expenses.where((e) {
+              return e.date.year == now.year && e.date.month == now.month;
+            }).toList();
+          } else if (_dateFilter == 'Financial Year') {
+            int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+            final fyStart = DateTime(fyStartYear, 4, 1);
+            final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+            expenses = expenses.where((e) {
+              final date = DateTime(e.date.year, e.date.month, e.date.day);
+              return (date.isAtSameMomentAs(fyStart) || date.isAfter(fyStart)) &&
+                     (date.isAtSameMomentAs(fyEnd) || date.isBefore(fyEnd));
+            }).toList();
+          } else if (_dateFilter == 'Custom' && _customDateRange != null) {
+            final start = DateTime(_customDateRange!.start.year, _customDateRange!.start.month, _customDateRange!.start.day);
+            final end = DateTime(_customDateRange!.end.year, _customDateRange!.end.month, _customDateRange!.end.day);
+            expenses = expenses.where((e) {
+              final date = DateTime(e.date.year, e.date.month, e.date.day);
+              return (date.isAtSameMomentAs(start) || date.isAfter(start)) &&
+                     (date.isAtSameMomentAs(end) || date.isBefore(end));
+            }).toList();
+          }
+
+          // 3. Apply Search Query Filter
+          final query = _searchQuery.toLowerCase().trim();
+          if (query.isNotEmpty) {
+            expenses = expenses.where((e) {
+              final matchName = (e.userName ?? '').toLowerCase().contains(query);
+              final matchType = e.type.toLowerCase().contains(query);
+              final matchDesc = e.description.toLowerCase().contains(query);
+              return matchName || matchType || matchDesc;
+            }).toList();
+          }
+
           expenses.sort((a, b) => b.date.compareTo(a.date));
 
           double totalAmt = 0;
@@ -59,12 +143,91 @@ class AdminPartnerExpensesScreen extends StatelessWidget {
 
           return Column(
             children: [
+              // Search & Filter Header Card
+              Card(
+                margin: const EdgeInsets.all(12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Search field
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search partner, type or place...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        ),
+                        onChanged: (val) {
+                          setState(() => _searchQuery = val);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // Dropdown filter row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _statusFilter,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                border: OutlineInputBorder(),
+                              ),
+                              items: ['All', 'Pending', 'Approved', 'Rejected'].map((status) {
+                                return DropdownMenuItem(value: status, child: Text(status));
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) setState(() => _statusFilter = val);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _dateFilter,
+                              decoration: const InputDecoration(
+                                labelText: 'Period',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                border: OutlineInputBorder(),
+                              ),
+                              items: ['All', 'Daily', 'Monthly', 'Financial Year', 'Custom'].map((period) {
+                                return DropdownMenuItem(value: period, child: Text(period));
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  if (val == 'Custom') {
+                                    _selectCustomDateRange();
+                                  } else {
+                                    setState(() => _dateFilter = val);
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 color: const Color(0xFF1A237E).withValues(alpha: 0.05),
                 child: Column(
                   children: [
-                    const Text('All Partners Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text('Summary Indicator', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -78,33 +241,38 @@ class AdminPartnerExpensesScreen extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: groupedExpenses.keys.length,
-                  itemBuilder: (context, index) {
-                    final partnerName = groupedExpenses.keys.elementAt(index);
-                    final partnerExpenses = groupedExpenses[partnerName]!;
-                    
-                    double partnerTotal = 0;
-                    for(var e in partnerExpenses) {
-                      partnerTotal += e.amount;
-                    }
-                    
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ExpansionTile(
-                        title: Text(partnerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${partnerExpenses.length} log(s) | Total: ₹${partnerTotal.toStringAsFixed(2)}'),
-                        leading: const CircleAvatar(backgroundColor: Color(0xFF1A237E), child: Icon(Icons.person, color: Colors.white)),
-                        children: partnerExpenses.map((expense) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                          child: _ExpenseCard(expense: expense),
-                        )).toList(),
+                child: expenses.isEmpty
+                    ? const Center(child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text('No expenses found matching the search/filter criteria.', style: TextStyle(color: Colors.grey)),
+                      ))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: groupedExpenses.keys.length,
+                        itemBuilder: (context, index) {
+                          final partnerName = groupedExpenses.keys.elementAt(index);
+                          final partnerExpenses = groupedExpenses[partnerName]!;
+                          
+                          double partnerTotal = 0;
+                          for(var e in partnerExpenses) {
+                            partnerTotal += e.amount;
+                          }
+                          
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: ExpansionTile(
+                              title: Text(partnerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text('${partnerExpenses.length} log(s) | Total: ₹${partnerTotal.toStringAsFixed(2)}'),
+                              leading: const CircleAvatar(backgroundColor: Color(0xFF1A237E), child: Icon(Icons.person, color: Colors.white)),
+                              children: partnerExpenses.map((expense) => Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                child: _ExpenseCard(expense: expense),
+                              )).toList(),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           );

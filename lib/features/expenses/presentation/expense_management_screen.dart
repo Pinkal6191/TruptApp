@@ -15,11 +15,37 @@ class ExpenseManagementScreen extends StatefulWidget {
 }
 
 class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
+  String _searchQuery = '';
+  String _dateFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
+  DateTimeRange? _customDateRange;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     RouteTracker.saveRoute('expense_management');
     context.read<ExpenseBloc>().add(LoadExpenses());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _selectCustomDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _customDateRange,
+    );
+    if (picked != null) {
+      setState(() {
+        _customDateRange = picked;
+        _dateFilter = 'Custom';
+      });
+    }
   }
 
   void _showAddExpenseModal() {
@@ -385,20 +411,50 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
           if (state is ExpenseLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is ExpensesLoaded) {
-            if (state.expenses.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.money_off, size: 80, color: Colors.grey.shade400),
-                    const SizedBox(height: 16),
-                    Text('No expenses recorded', style: TextStyle(fontSize: 20, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              );
+            var filteredExpenses = List<ExpenseModel>.from(state.expenses);
+
+            // 1. Apply Date Filter
+            final now = DateTime.now();
+            if (_dateFilter == 'Daily') {
+              final today = DateTime(now.year, now.month, now.day);
+              filteredExpenses = filteredExpenses.where((e) {
+                final date = DateTime(e.date.year, e.date.month, e.date.day);
+                return date.isAtSameMomentAs(today);
+              }).toList();
+            } else if (_dateFilter == 'Monthly') {
+              filteredExpenses = filteredExpenses.where((e) {
+                return e.date.year == now.year && e.date.month == now.month;
+              }).toList();
+            } else if (_dateFilter == 'Financial Year') {
+              int fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+              final fyStart = DateTime(fyStartYear, 4, 1);
+              final fyEnd = DateTime(fyStartYear + 1, 3, 31);
+              filteredExpenses = filteredExpenses.where((e) {
+                final date = DateTime(e.date.year, e.date.month, e.date.day);
+                return (date.isAtSameMomentAs(fyStart) || date.isAfter(fyStart)) &&
+                       (date.isAtSameMomentAs(fyEnd) || date.isBefore(fyEnd));
+              }).toList();
+            } else if (_dateFilter == 'Custom' && _customDateRange != null) {
+              final start = DateTime(_customDateRange!.start.year, _customDateRange!.start.month, _customDateRange!.start.day);
+              final end = DateTime(_customDateRange!.end.year, _customDateRange!.end.month, _customDateRange!.end.day);
+              filteredExpenses = filteredExpenses.where((e) {
+                final date = DateTime(e.date.year, e.date.month, e.date.day);
+                return (date.isAtSameMomentAs(start) || date.isAfter(start)) &&
+                       (date.isAtSameMomentAs(end) || date.isBefore(end));
+              }).toList();
             }
 
-            double totalExpense = state.expenses.fold(0, (sum, item) => sum + item.amount);
+            // 2. Apply Search Filter
+            final query = _searchQuery.toLowerCase().trim();
+            if (query.isNotEmpty) {
+              filteredExpenses = filteredExpenses.where((e) {
+                final matchType = e.type.toLowerCase().contains(query);
+                final matchDesc = e.description.toLowerCase().contains(query);
+                return matchType || matchDesc;
+              }).toList();
+            }
+
+            double totalExpense = filteredExpenses.fold(0, (sum, item) => sum + item.amount);
 
             return Column(
               children: [
@@ -418,65 +474,124 @@ class _ExpenseManagementScreenState extends State<ExpenseManagementScreen> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: ListView.builder(
+                // Search & Filter Card
+                Card(
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
-                    itemCount: state.expenses.length,
-                    itemBuilder: (context, index) {
-                      final expense = state.expenses[index];
-                      return Card(
-                        elevation: 1,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                            child: Icon(_getExpenseIcon(expense.type), color: const Color(0xFF3B82F6)),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search type or description...',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0),
                           ),
-                          title: Text(expense.type, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${DateFormat('MMM dd, yyyy').format(expense.date)}${expense.description.isNotEmpty ? ' • ${expense.description}' : ''}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('-₹${expense.amount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, size: 20),
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    _showEditExpenseModal(expense);
-                                  } else if (value == 'delete') {
-                                    _showConfirmDeleteDialog(expense);
-                                  }
-                                },
-                                itemBuilder: (BuildContext context) => [
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.edit, color: Colors.blue, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Edit'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete, color: Colors.red, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Delete'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                          onChanged: (val) {
+                            setState(() => _searchQuery = val);
+                          },
                         ),
-                      );
-                    },
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _dateFilter,
+                          decoration: const InputDecoration(
+                            labelText: 'Period Filter',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: ['All', 'Daily', 'Monthly', 'Financial Year', 'Custom'].map((period) {
+                            return DropdownMenuItem(value: period, child: Text(period));
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              if (val == 'Custom') {
+                                _selectCustomDateRange();
+                              } else {
+                                setState(() => _dateFilter = val);
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                Expanded(
+                  child: filteredExpenses.isEmpty
+                      ? const Center(child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Text('No expenses found matching search/filter.', style: TextStyle(color: Colors.grey)),
+                        ))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredExpenses.length,
+                          itemBuilder: (context, index) {
+                            final expense = filteredExpenses[index];
+                            return Card(
+                              elevation: 1,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                                  child: Icon(_getExpenseIcon(expense.type), color: const Color(0xFF3B82F6)),
+                                ),
+                                title: Text(expense.type, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('${DateFormat('MMM dd, yyyy').format(expense.date)}${expense.description.isNotEmpty ? ' • ${expense.description}' : ''}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('-₹${expense.amount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(Icons.more_vert, size: 20),
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _showEditExpenseModal(expense);
+                                        } else if (value == 'delete') {
+                                          _showConfirmDeleteDialog(expense);
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => [
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.edit, color: Colors.blue, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Edit'),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.delete, color: Colors.red, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Delete'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             );
