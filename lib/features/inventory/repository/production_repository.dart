@@ -15,9 +15,37 @@ class ProductionRepository {
   }
 
   // Add raw material
-  Future<void> addRawMaterial(RawMaterialModel material) async {
+  Future<void> addRawMaterial(
+    RawMaterialModel material, {
+    double? purchaseCost,
+    double? transportCost,
+    String? userId,
+    String? userName,
+  }) async {
     try {
-      await _firestore.collection('raw_materials').add(material.toMap());
+      final docRef = _firestore.collection('raw_materials').doc();
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(docRef, material.toMap());
+
+        if (material.stockCount > 0) {
+          final double totalCost = (purchaseCost ?? 0.0) + (transportCost ?? 0.0);
+          final double perUnit = totalCost / material.stockCount;
+
+          final adjustmentRef = docRef.collection('adjustments').doc();
+          transaction.set(adjustmentRef, {
+            'adjustment': material.stockCount,
+            'previousStock': 0.0,
+            'newStock': material.stockCount,
+            'purchaseCost': purchaseCost ?? 0.0,
+            'transportCost': transportCost ?? 0.0,
+            'perUnitCost': perUnit,
+            'action': 'Initial Creation',
+            'date': Timestamp.fromDate(DateTime.now()),
+            'userId': userId ?? '',
+            'userName': userName ?? '',
+          });
+        }
+      });
     } catch (e) {
       throw Exception('Failed to add raw material: $e');
     }
@@ -33,14 +61,39 @@ class ProductionRepository {
   }
 
   // Manually adjust raw material stock
-  Future<void> updateRawMaterialStock(String materialId, double adjustment) async {
+  Future<void> updateRawMaterialStock(
+    String materialId,
+    double adjustment, {
+    double? purchaseCost,
+    double? transportCost,
+    String? userId,
+    String? userName,
+  }) async {
     try {
       final docRef = _firestore.collection('raw_materials').doc(materialId);
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(docRef);
         if (snapshot.exists) {
           double currentStock = (snapshot.data()?['stockCount'] ?? 0.0).toDouble();
-          transaction.update(docRef, {'stockCount': currentStock + adjustment});
+          double newStock = currentStock + adjustment;
+          transaction.update(docRef, {'stockCount': newStock});
+
+          final double totalCost = (purchaseCost ?? 0.0) + (transportCost ?? 0.0);
+          final double perUnit = (adjustment > 0 && totalCost > 0) ? (totalCost / adjustment) : 0.0;
+
+          final adjustmentRef = docRef.collection('adjustments').doc();
+          transaction.set(adjustmentRef, {
+            'adjustment': adjustment,
+            'previousStock': currentStock,
+            'newStock': newStock,
+            'purchaseCost': purchaseCost ?? 0.0,
+            'transportCost': transportCost ?? 0.0,
+            'perUnitCost': perUnit,
+            'action': adjustment > 0 ? 'Add Stock' : 'Consume',
+            'date': Timestamp.fromDate(DateTime.now()),
+            'userId': userId ?? '',
+            'userName': userName ?? '',
+          });
         }
       });
     } catch (e) {
@@ -108,7 +161,7 @@ class ProductionRepository {
           });
         }
 
-        // 3. Decrement consumed raw materials
+        // 3. Decrement consumed raw materials and log history
         for (var consumed in log.consumedMaterials) {
           final String matId = consumed['materialId'] ?? '';
           final double qty = (consumed['quantity'] ?? 0.0).toDouble();
@@ -118,7 +171,22 @@ class ProductionRepository {
             final matSnapshot = await transaction.get(matRef);
             if (matSnapshot.exists) {
               double currentStock = (matSnapshot.data()?['stockCount'] ?? 0.0).toDouble();
-              transaction.update(matRef, {'stockCount': currentStock - qty});
+              double newStock = currentStock - qty;
+              transaction.update(matRef, {'stockCount': newStock});
+
+              final adjustmentRef = matRef.collection('adjustments').doc();
+              transaction.set(adjustmentRef, {
+                'adjustment': -qty,
+                'previousStock': currentStock,
+                'newStock': newStock,
+                'purchaseCost': 0.0,
+                'transportCost': 0.0,
+                'perUnitCost': 0.0,
+                'action': 'Production Consumption',
+                'date': Timestamp.fromDate(DateTime.now()),
+                'userId': '',
+                'userName': 'Production Run',
+              });
             }
           }
         }
@@ -148,5 +216,22 @@ class ProductionRepository {
     } catch (e) {
       throw Exception('Failed to adjust factory stock: $e');
     }
+  }
+
+  // Stream raw material stock adjustment logs descending by date
+  Stream<List<Map<String, dynamic>>> watchRawMaterialAdjustments(String materialId) {
+    return _firestore
+        .collection('raw_materials')
+        .doc(materialId)
+        .collection('adjustments')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              return {
+                'id': doc.id,
+                ...data,
+              };
+            }).toList());
   }
 }
