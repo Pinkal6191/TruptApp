@@ -60,6 +60,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
         double amountPaidNow = currentPending;
         bool isCorrectionMode = false;
+        String selectedPaymentMethod = 'Cash';
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -173,6 +174,26 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         } else {
                           amountPaidNow = parsed;
                         }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedPaymentMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Payment Method',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                      DropdownMenuItem(value: 'GPay', child: Text('GPay')),
+                      DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
+                      DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
+                      DropdownMenuItem(value: 'Other', child: Text('Other')),
+                    ],
+                    onChanged: (val) {
+                      setModalState(() {
+                        selectedPaymentMethod = val ?? 'Cash';
                       });
                     },
                   ),
@@ -312,6 +333,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               previousPaidAmount: previouslyPaid,
                               userId: userId,
                               userName: userName,
+                              paymentMethod: selectedPaymentMethod,
                             ));
                         Navigator.pop(context);
                         if (isOverpaid) {
@@ -676,6 +698,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         'date': _currentOrder.createdAt,
                         'note': 'Payment recorded (historical)',
                         'isHistorical': true,
+                        'paymentMethod': 'Cash',
                       }
                     ];
                   }
@@ -718,6 +741,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 : entry['date'] as DateTime;
                             final String note = entry['note'] ?? '';
                             final bool isPositive = amount >= 0;
+                            final String paymentMethod = entry['paymentMethod'] ?? 'Cash';
                             return Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               child: Row(
@@ -740,12 +764,35 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(note, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          isHistorical
-                                              ? 'Order date: ${DateFormat('dd MMM yyyy').format(date)}'
-                                              : DateFormat('dd MMM yyyy, hh:mm a').format(date),
-                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade100,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                paymentMethod,
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                isHistorical
+                                                    ? 'Order date: ${DateFormat('dd MMM yyyy').format(date)}'
+                                                    : DateFormat('dd MMM yyyy, hh:mm a').format(date),
+                                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
