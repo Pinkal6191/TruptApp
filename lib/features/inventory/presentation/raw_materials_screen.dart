@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/raw_material_model.dart';
 import '../../../core/models/expense_model.dart';
 import '../../../core/utils/route_tracker.dart';
@@ -28,6 +30,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
     final minReorderController = TextEditingController(text: material != null ? material.minReorderLevel.toString() : '10.0');
     final stockController = TextEditingController(text: material != null ? material.stockCount.toString() : '0.0');
     final purchaseCostController = TextEditingController();
+    final transportCostController = TextEditingController();
     String selectedUnit = material?.unit ?? 'kg';
 
     final List<String> commonUnits = ['kg', 'liters', 'pcs', 'bags', 'grams', 'ml'];
@@ -107,6 +110,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                             child: TextField(
                               controller: stockController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (_) => setModalState(() {}),
                               decoration: const InputDecoration(
                                 labelText: 'Initial Stock Count',
                                 hintText: 'e.g. 100.0',
@@ -119,8 +123,9 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                             child: TextField(
                               controller: purchaseCostController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (_) => setModalState(() {}),
                               decoration: const InputDecoration(
-                                labelText: 'Total Cost (₹)',
+                                labelText: 'Purchase Cost (₹)',
                                 hintText: 'Optional',
                                 border: OutlineInputBorder(),
                                 prefixText: '₹ ',
@@ -128,6 +133,67 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: transportCostController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setModalState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Transport Cost (₹)',
+                          hintText: 'Optional Transport cost',
+                          border: OutlineInputBorder(),
+                          prefixText: '₹ ',
+                          prefixIcon: Icon(Icons.local_shipping),
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final qty = double.tryParse(stockController.text) ?? 0.0;
+                          final pCost = double.tryParse(purchaseCostController.text) ?? 0.0;
+                          final tCost = double.tryParse(transportCostController.text) ?? 0.0;
+                          final totalCost = pCost + tCost;
+                          final perUnit = qty > 0 ? (totalCost / qty) : 0.0;
+
+                          if (qty <= 0 || totalCost <= 0) return const SizedBox.shrink();
+
+                          return Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Calculated Per-Unit Cost', style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF))),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '₹${perUnit.toStringAsFixed(2)} / $selectedUnit',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text('Total Cost', style: TextStyle(fontSize: 12, color: Color(0xFF1E40AF))),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '₹${totalCost.toStringAsFixed(2)}',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -145,6 +211,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                           final minReorder = double.tryParse(minReorderController.text) ?? 0.0;
                           final stock = double.tryParse(stockController.text) ?? 0.0;
                           final cost = double.tryParse(purchaseCostController.text) ?? 0.0;
+                          final transport = double.tryParse(transportCostController.text) ?? 0.0;
 
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +238,18 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                                 stockCount: stock,
                                 minReorderLevel: minReorder,
                               );
-                              await _productionRepository.addRawMaterial(newItem);
+
+                              final currentUser = FirebaseAuth.instance.currentUser;
+                              final String uId = currentUser?.uid ?? 'unknown';
+                              final String uName = currentUser?.displayName ?? currentUser?.email ?? 'Admin';
+
+                              await _productionRepository.addRawMaterial(
+                                newItem,
+                                purchaseCost: cost,
+                                transportCost: transport,
+                                userId: uId,
+                                userName: uName,
+                              );
 
                               // Log expense if provided
                               if (cost > 0) {
@@ -183,6 +261,18 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                                   type: 'Raw Materials',
                                 );
                                 await _expenseRepository.addExpense(expense);
+                              }
+
+                              // Log transport expense if provided
+                              if (transport > 0) {
+                                final transportExpense = ExpenseModel(
+                                  id: '',
+                                  description: 'Transport charge for buy: $name ($stock $selectedUnit)',
+                                  amount: transport,
+                                  date: DateTime.now(),
+                                  type: 'Transport charge for material buy or delivered',
+                                );
+                                await _expenseRepository.addExpense(transportExpense);
                               }
                             }
                             if (context.mounted) {
@@ -216,9 +306,215 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
     );
   }
 
+  void _showHistoryModal(RawMaterialModel material) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Stock History',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          material.name,
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _productionRepository.watchRawMaterialAdjustments(material.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+                    final adjustments = snapshot.data ?? [];
+                    if (adjustments.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_toggle_off, size: 64, color: Colors.grey.shade400),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No stock history found.',
+                              style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: adjustments.length,
+                      itemBuilder: (context, index) {
+                        final log = adjustments[index];
+                        final double qty = (log['adjustment'] ?? 0.0).toDouble();
+                        final String action = log['action'] ?? 'Adjustment';
+                        final double purchaseCost = (log['purchaseCost'] ?? 0.0).toDouble();
+                        final double transportCost = (log['transportCost'] ?? 0.0).toDouble();
+                        final double perUnitCost = (log['perUnitCost'] ?? 0.0).toDouble();
+                        final double prevStock = (log['previousStock'] ?? 0.0).toDouble();
+                        final double newStock = (log['newStock'] ?? 0.0).toDouble();
+                        final String userName = log['userName'] ?? 'System';
+                        
+                        DateTime? logDate;
+                        if (log['date'] is Timestamp) {
+                          logDate = (log['date'] as Timestamp).toDate();
+                        }
+
+                        final isRestock = qty > 0;
+                        final color = isRestock ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                        final icon = isRestock ? Icons.add_circle_outline : Icons.remove_circle_outline;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: color.withValues(alpha: 0.1),
+                                    radius: 18,
+                                    child: Icon(icon, color: color, size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              action,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E3A8A)),
+                                            ),
+                                            Text(
+                                              '${qty > 0 ? '+' : ''}$qty ${material.unit}',
+                                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color),
+                                            ),
+                                          ],
+                                        ),
+                                        if (logDate != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2.0),
+                                            child: Text(
+                                              '${logDate.day}/${logDate.month}/${logDate.year} at ${logDate.hour.toString().padLeft(2, '0')}:${logDate.minute.toString().padLeft(2, '0')}',
+                                              style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Stock Flow: $prevStock → $newStock ${material.unit}',
+                                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                                  ),
+                                  Text(
+                                    'By: $userName',
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
+                                  ),
+                                ],
+                              ),
+                              if (isRestock && (purchaseCost > 0 || transportCost > 0)) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Purchase Cost: ₹${purchaseCost.toStringAsFixed(2)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 11)),
+                                          if (transportCost > 0)
+                                            Text('Transport Cost: ₹${transportCost.toStringAsFixed(2)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 11)),
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          const Text('Actual Per-Unit Cost', style: TextStyle(color: Color(0xFF1E40AF), fontSize: 10, fontWeight: FontWeight.w600)),
+                                          Text(
+                                            '₹${perUnitCost.toStringAsFixed(2)} / ${material.unit}',
+                                            style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 13, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showAdjustStockModal(RawMaterialModel material) {
     final amountController = TextEditingController();
     final purchaseCostController = TextEditingController();
+    final transportCostController = TextEditingController();
     bool isAdding = true;
 
     showDialog(
@@ -229,64 +525,121 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Text('Adjust Stock: ${material.name}', style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Current Stock: ${material.stockCount} ${material.unit}', style: const TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isAdding ? const Color(0xFF10B981) : Colors.grey.shade200,
-                          foregroundColor: isAdding ? Colors.white : Colors.black87,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Current Stock: ${material.stockCount} ${material.unit}', style: const TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isAdding ? const Color(0xFF10B981) : Colors.grey.shade200,
+                            foregroundColor: isAdding ? Colors.white : Colors.black87,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () => setDialogState(() => isAdding = true),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Stock'),
                         ),
-                        onPressed: () => setDialogState(() => isAdding = true),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Stock'),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: !isAdding ? const Color(0xFFEF4444) : Colors.grey.shade200,
-                          foregroundColor: !isAdding ? Colors.white : Colors.black87,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: !isAdding ? const Color(0xFFEF4444) : Colors.grey.shade200,
+                            foregroundColor: !isAdding ? Colors.white : Colors.black87,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () => setDialogState(() => isAdding = false),
+                          icon: const Icon(Icons.remove),
+                          label: const Text('Consume'),
                         ),
-                        onPressed: () => setDialogState(() => isAdding = false),
-                        icon: const Icon(Icons.remove),
-                        label: const Text('Consume'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: isAdding ? 'Quantity to Add' : 'Quantity to Subtract',
-                      suffixText: material.unit,
-                      border: const OutlineInputBorder(),
+                      ],
                     ),
-                  ),
-                  if (isAdding) ...[
                     const SizedBox(height: 16),
                     TextField(
-                      controller: purchaseCostController,
+                      controller: amountController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Total Cost (₹)',
-                        hintText: 'Optional Purchase Cost',
-                        border: OutlineInputBorder(),
-                        prefixText: '₹ ',
+                      onChanged: (_) => setDialogState(() {}),
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: isAdding ? 'Quantity to Add' : 'Quantity to Subtract',
+                        suffixText: material.unit,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
+                    if (isAdding) ...[
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: purchaseCostController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Purchase Cost (₹)',
+                          hintText: 'Optional Purchase Cost',
+                          border: OutlineInputBorder(),
+                          prefixText: '₹ ',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: transportCostController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'Transport Cost (₹)',
+                          hintText: 'Optional Transport Cost',
+                          border: OutlineInputBorder(),
+                          prefixText: '₹ ',
+                          prefixIcon: Icon(Icons.local_shipping),
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final qty = double.tryParse(amountController.text) ?? 0.0;
+                          final pCost = double.tryParse(purchaseCostController.text) ?? 0.0;
+                          final tCost = double.tryParse(transportCostController.text) ?? 0.0;
+                          final totalCost = pCost + tCost;
+                          final perUnit = qty > 0 ? (totalCost / qty) : 0.0;
+
+                          if (qty <= 0 || totalCost <= 0) return const SizedBox.shrink();
+
+                          return Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Per-Unit Cost:', style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF))),
+                                    Text('₹${perUnit.toStringAsFixed(2)} / ${material.unit}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Total Cost:', style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF))),
+                                    Text('₹${totalCost.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -301,6 +654,7 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                   onPressed: () async {
                     final qty = double.tryParse(amountController.text) ?? 0.0;
                     final cost = double.tryParse(purchaseCostController.text) ?? 0.0;
+                    final transport = double.tryParse(transportCostController.text) ?? 0.0;
                     if (qty <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Please enter a valid quantity'), backgroundColor: Colors.red),
@@ -310,9 +664,21 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
 
                     try {
                       final adjustment = isAdding ? qty : -qty;
-                      await _productionRepository.updateRawMaterialStock(material.id, adjustment);
+
+                      final currentUser = FirebaseAuth.instance.currentUser;
+                      final String uId = currentUser?.uid ?? 'unknown';
+                      final String uName = currentUser?.displayName ?? currentUser?.email ?? 'Admin';
+
+                      await _productionRepository.updateRawMaterialStock(
+                        material.id, 
+                        adjustment,
+                        purchaseCost: cost,
+                        transportCost: transport,
+                        userId: uId,
+                        userName: uName,
+                      );
                       
-                      // Log expense if cost provided
+                      // Log expense if purchase cost provided
                       if (isAdding && cost > 0) {
                         final expense = ExpenseModel(
                           id: '',
@@ -322,6 +688,18 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                           type: 'Raw Materials',
                         );
                         await _expenseRepository.addExpense(expense);
+                      }
+
+                      // Log transport charge expense if provided
+                      if (isAdding && transport > 0) {
+                        final transportExpense = ExpenseModel(
+                          id: '',
+                          description: 'Transport charge for buy: ${material.name} ($qty ${material.unit})',
+                          amount: transport,
+                          date: DateTime.now(),
+                          type: 'Transport charge for material buy or delivered',
+                        );
+                        await _expenseRepository.addExpense(transportExpense);
                       }
 
                       if (context.mounted) {
@@ -558,10 +936,20 @@ class _RawMaterialsScreenState extends State<RawMaterialsScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                TextButton.icon(
-                                  onPressed: () => _showAdjustStockModal(material),
-                                  icon: const Icon(Icons.settings_suggest, size: 18, color: Color(0xFF3B82F6)),
-                                  label: const Text('Adjust Stock', style: TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold)),
+                                Row(
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: () => _showAdjustStockModal(material),
+                                      icon: const Icon(Icons.settings_suggest, size: 16, color: Color(0xFF3B82F6)),
+                                      label: const Text('Adjust', style: TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    TextButton.icon(
+                                      onPressed: () => _showHistoryModal(material),
+                                      icon: const Icon(Icons.history, size: 16, color: Color(0xFF8B5CF6)),
+                                      label: const Text('History', style: TextStyle(color: Color(0xFF8B5CF6), fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
+                                  ],
                                 ),
                                 Row(
                                   children: [
