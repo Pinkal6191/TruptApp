@@ -26,6 +26,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   static const int _pageSize = 20;
   String _periodFilter = 'All'; // 'All', 'Daily', 'Monthly', 'Financial Year'
   String _sortOrder = 'Date Desc'; // 'Date Desc', 'Invoice Asc', 'Invoice Desc'
+  String _paymentMethodFilter = 'All'; // 'All', 'Cash', 'GPay', 'NEFT', 'Cheque', 'Other'
 
   @override
   void initState() {
@@ -117,6 +118,77 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+
+  void _showMarkPaidDialog(BuildContext context, OrderModel order, String? userId, String? userName) {
+    String selectedMethod = 'Cash';
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Mark Order as Paid'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Are you sure you want to mark order #${order.invoiceNumber} as fully paid?'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Payment Method',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                      DropdownMenuItem(value: 'GPay', child: Text('GPay')),
+                      DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
+                      DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
+                      DropdownMenuItem(value: 'Other', child: Text('Other')),
+                    ],
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedMethod = val ?? 'Cash';
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    context.read<OrderBloc>().add(UpdateOrderPayment(
+                      orderId: order.id,
+                      paidAmount: order.finalAmount,
+                      paymentStatus: 'Paid',
+                      previousPaidAmount: order.paidAmount,
+                      userId: userId,
+                      userName: userName,
+                      paymentMethod: selectedMethod,
+                    ));
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Order marked as Paid')),
+                    );
+                  },
+                  child: const Text('Confirm'),
+                ),
+              ],
+            );
+          }
+        );
+      },
     );
   }
 
@@ -245,7 +317,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               if (_statusFilter == 'Pending') {
                 final isPendingDelivery = order.deliveryStatus.toLowerCase() != 'delivered';
                 final isPendingPayment = order.paymentStatus.toLowerCase() != 'paid';
-                return isPendingDelivery || isPendingPayment;
+                if (!isPendingDelivery && !isPendingPayment) return false;
+              }
+
+              // 3. Payment Method filter
+              if (_paymentMethodFilter != 'All') {
+                if (order.getFilteredPaidAmount(_paymentMethodFilter) <= 0) {
+                  return false;
+                }
               }
 
               return true;
@@ -258,7 +337,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             if (_searchQuery.isNotEmpty && filteredOrders.isNotEmpty) {
               for (var o in filteredOrders) {
                 totalOrderAmount += o.finalAmount;
-                totalPartialPaid += o.paidAmount;
+                totalPartialPaid += o.getFilteredPaidAmount(_paymentMethodFilter);
                 totalDueAmount += o.remainingAmount;
               }
             }
@@ -561,6 +640,38 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             color: _periodFilter == 'Financial Year' ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Container(height: 24, width: 1, color: Colors.grey.shade300),
+                        const SizedBox(width: 8),
+                        ...['All', 'Cash', 'GPay', 'NEFT', 'Cheque', 'Other'].map((method) {
+                          final label = method == 'All' ? 'All Pay' : method;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: FilterChip(
+                              label: Text(label),
+                              selected: _paymentMethodFilter == method,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() {
+                                    _paymentMethodFilter = method;
+                                    _currentPage = 1;
+                                  });
+                                }
+                              },
+                              selectedColor: const Color(0xFFEFF6FF),
+                              checkmarkColor: const Color(0xFF1E3A8A),
+                              labelStyle: TextStyle(
+                                color: _paymentMethodFilter == method ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
+                                fontWeight: _paymentMethodFilter == method ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 13,
+                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              side: BorderSide(
+                                color: _paymentMethodFilter == method ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : Colors.grey.shade300,
+                              ),
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -772,6 +883,31 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               ),
                             ),
                           ),
+                          if (order.paidAmount > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.payment_outlined, size: 12, color: Colors.grey.shade600),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    order.getPaymentMethods().join(', '),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           if (order.remainingAmount < 0)
                             _adminAmountBadge('Return ₹${order.remainingAmount.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
@@ -856,14 +992,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 final authState = context.read<AuthBloc>().state;
                                 final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
                                 final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                                context.read<OrderBloc>().add(UpdateOrderPayment(
-                                      orderId: order.id,
-                                      paidAmount: order.finalAmount,
-                                      paymentStatus: 'Paid',
-                                      userId: userId,
-                                      userName: userName,
-                                    ));
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
+                                _showMarkPaidDialog(context, order, userId, userName);
                               },
                             )
                           else if (context.read<AuthBloc>().state is Authenticated && (context.read<AuthBloc>().state as Authenticated).user.role == 'admin')
@@ -1102,6 +1231,31 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                     _adminStatusBadge(order.deliveryStatus, _deliveryColor(order.deliveryStatus)),
                                     const SizedBox(width: 6),
                                     _adminStatusBadge(order.paymentStatus, _paymentColor(order.paymentStatus)),
+                                    if (order.paidAmount > 0) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.payment_outlined, size: 10, color: Colors.grey.shade600),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              order.getPaymentMethods().join(', '),
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 9,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                     const Spacer(),
                                     if (isOverpaid)
                                       _adminAmountBadge('Return ₹${pending.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)

@@ -117,6 +117,77 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
     );
   }
 
+  void _showMarkPaidDialog(BuildContext context, OrderModel order, String? userId, String? userName) {
+    String selectedMethod = 'Cash';
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Mark Order as Paid'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Are you sure you want to mark order #${order.invoiceNumber} as fully paid?'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Payment Method',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                      DropdownMenuItem(value: 'GPay', child: Text('GPay')),
+                      DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
+                      DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
+                      DropdownMenuItem(value: 'Other', child: Text('Other')),
+                    ],
+                    onChanged: (val) {
+                      setDialogState(() {
+                        selectedMethod = val ?? 'Cash';
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    context.read<OrderBloc>().add(UpdateOrderPayment(
+                      orderId: order.id,
+                      paidAmount: order.finalAmount,
+                      paymentStatus: 'Paid',
+                      previousPaidAmount: order.paidAmount,
+                      userId: userId,
+                      userName: userName,
+                      paymentMethod: selectedMethod,
+                    ));
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Order marked as Paid')),
+                    );
+                  },
+                  child: const Text('Confirm'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -461,6 +532,31 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                               ),
                             ),
                           ),
+                          if (order.paidAmount > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.payment_outlined, size: 12, color: Colors.grey.shade600),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    order.getPaymentMethods().join(', '),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           if (order.remainingAmount < 0)
                             _adminAmountBadge('Return ₹${order.remainingAmount.abs().toStringAsFixed(0)}', Colors.purple.shade600, Colors.purple.shade50)
@@ -544,14 +640,7 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                                 final authState = context.read<AuthBloc>().state;
                                 final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
                                 final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-                                context.read<OrderBloc>().add(UpdateOrderPayment(
-                                      orderId: order.id,
-                                      paidAmount: order.finalAmount,
-                                      paymentStatus: 'Paid',
-                                      userId: userId,
-                                      userName: userName,
-                                    ));
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked as Paid')));
+                                _showMarkPaidDialog(context, order, userId, userName);
                               },
                             )
                           else
