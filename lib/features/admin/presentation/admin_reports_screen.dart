@@ -33,6 +33,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   String _periodFilter = 'All'; // All, Daily, Monthly, Financial Year, Custom
   String _sortOrder = 'Sales Desc'; // Default to Sales Desc for aggregated, will switch to Date Desc for order_wise/expense
   bool _showUnpaidOnly = false; // admin-only: show only Pending/Partial orders
+  String _paymentMethodFilter = 'All'; // All, Cash, GPay, NEFT, Cheque, Other
 
   @override
   void initState() {
@@ -194,6 +195,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       filtered = filtered.where((o) => o.paymentStatus != 'Paid').toList();
     }
 
+    // Payment method filter
+    if (_paymentMethodFilter != 'All') {
+      filtered = filtered.where((o) => o.getFilteredPaidAmount(_paymentMethodFilter) > 0).toList();
+    }
+
     if (_reportType == 'partner') {
       filtered = filtered.where((o) =>
         o.creatorRole == 'partner' ||
@@ -246,7 +252,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           'subtotal': o.subtotal,
           'gstAmount': o.gstAmount,
           'sales': o.finalAmount,
-          'paid': o.paidAmount,
+          'paid': o.getFilteredPaidAmount(_paymentMethodFilter),
           'orders': 1,
           'paymentStatus': o.paymentStatus,
           'partnerName': o.partnerName,
@@ -287,7 +293,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
       aggregated[key]!['orders'] = (aggregated[key]!['orders'] as int) + 1;
       aggregated[key]!['sales'] = (aggregated[key]!['sales'] as double) + o.finalAmount;
-      aggregated[key]!['paid'] = (aggregated[key]!['paid'] as double) + o.paidAmount;
+      aggregated[key]!['paid'] = (aggregated[key]!['paid'] as double) + o.getFilteredPaidAmount(_paymentMethodFilter);
       aggregated[key]!['commission'] = (aggregated[key]!['commission'] as double) + commission;
     }
 
@@ -378,6 +384,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       [],
       ['BUSINESS REPORT: ${_getReportTypeName()}'],
       ['Period: ${_getDateRangeDescription()}'],
+      if (_paymentMethodFilter != 'All' && _reportType != 'expense') ['Payment Method: $_paymentMethodFilter'],
       ['Generated On: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}'],
       [],
     ];
@@ -682,6 +689,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             // Header
             pw.Text('BUSINESS REPORT: ${_getReportTypeName()}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.Text('Period: ${_getDateRangeDescription()}'),
+            if (_paymentMethodFilter != 'All' && _reportType != 'expense') pw.Text('Payment Method: $_paymentMethodFilter'),
             pw.SizedBox(height: 10),
         
             // Data Table
@@ -844,6 +852,31 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           ),
                         ],
                       ),
+                      if (_reportType != 'expense') ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          value: _paymentMethodFilter,
+                          decoration: InputDecoration(
+                            labelText: 'Payment Method',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'All', child: Text('All Payment Methods')),
+                            DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                            DropdownMenuItem(value: 'GPay', child: Text('GPay')),
+                            DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
+                            DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
+                            DropdownMenuItem(value: 'Other', child: Text('Other')),
+                          ],
+                          onChanged: (val) {
+                            setState(() {
+                              _paymentMethodFilter = val ?? 'All';
+                            });
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         children: [
