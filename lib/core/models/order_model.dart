@@ -126,8 +126,44 @@ class OrderModel {
       additionalNote: map['additionalNote'] ?? '',
       referredPartnerId: map['referredPartnerId'] ?? '',
       paymentHistory: List<Map<String, dynamic>>.from(
-        (map['paymentHistory'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+        (map['paymentHistory'] ?? []).map((e) {
+          final m = Map<String, dynamic>.from(e);
+          if (!m.containsKey('paymentMethod')) {
+            m['paymentMethod'] = 'Cash';
+          }
+          return m;
+        }),
       ),
     );
+  }
+
+  double getFilteredPaidAmount(String method) {
+    if (method == 'All') return paidAmount;
+    double sum = 0.0;
+    if (paymentHistory.isEmpty) {
+      if (method == 'Cash') {
+        return paidAmount;
+      }
+      return 0.0;
+    }
+    for (var entry in paymentHistory) {
+      final String entryMethod = entry['paymentMethod'] ?? 'Cash';
+      if (entryMethod.toLowerCase() == method.toLowerCase()) {
+        sum += (entry['amount'] as num).toDouble();
+      }
+    }
+    return sum;
+  }
+
+  List<String> getPaymentMethods() {
+    if (paymentHistory.isEmpty) {
+      return paidAmount > 0 ? ['Cash'] : [];
+    }
+    final Set<String> methods = {};
+    for (var entry in paymentHistory) {
+      final String entryMethod = entry['paymentMethod'] ?? 'Cash';
+      methods.add(entryMethod);
+    }
+    return methods.toList();
   }
 }

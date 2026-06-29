@@ -150,7 +150,7 @@ class OrderRepository {
     }
   }
 
-  Future<void> updateOrderPayment(String orderId, double paidAmount, String paymentStatus, {double? previousPaidAmount, String? paymentNote}) async {
+  Future<void> updateOrderPayment(String orderId, double paidAmount, String paymentStatus, {double? previousPaidAmount, String? paymentNote, String? paymentMethod}) async {
     try {
       final doc = await _firestore.collection(collectionName).doc(orderId).get();
       if (doc.exists) {
@@ -175,6 +175,7 @@ class OrderRepository {
             'amount': incrementalPayment,
             'date': Timestamp.fromDate(DateTime.now()),
             'note': paymentStatus == 'Pending' ? 'Marked Unpaid' : (paymentNote ?? (incrementalPayment > 0 ? 'Payment received' : 'Payment reversed')),
+            'paymentMethod': paymentMethod ?? 'Cash',
           };
           updateData['paymentHistory'] = FieldValue.arrayUnion([historyEntry]);
         }
