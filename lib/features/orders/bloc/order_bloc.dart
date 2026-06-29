@@ -131,7 +131,13 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     final isStreaming = _ordersSubscription != null;
     if (!isStreaming) emit(OrderLoading());
     try {
-      await _orderRepository.updateOrderPayment(event.orderId, event.paidAmount, event.paymentStatus, previousPaidAmount: event.previousPaidAmount);
+      await _orderRepository.updateOrderPayment(
+        event.orderId,
+        event.paidAmount,
+        event.paymentStatus,
+        previousPaidAmount: event.previousPaidAmount,
+        paymentMethod: event.paymentMethod,
+      );
       if (!isStreaming) {
         emit(OrderOperationSuccess(message: 'Payment recorded successfully!'));
         add(LoadOrders(userId: event.userId, userName: event.userName)); 

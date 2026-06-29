@@ -55,6 +55,7 @@ class UpdateOrderPayment extends OrderEvent {
   final double? previousPaidAmount;
   final String? userId;
   final String? userName;
+  final String? paymentMethod;
 
   UpdateOrderPayment({
     required this.orderId,
@@ -63,6 +64,7 @@ class UpdateOrderPayment extends OrderEvent {
     this.previousPaidAmount,
     this.userId,
     this.userName,
+    this.paymentMethod,
   });
 }
 
