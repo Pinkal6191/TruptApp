@@ -61,6 +61,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         double amountPaidNow = currentPending;
         bool isCorrectionMode = false;
         String selectedPaymentMethod = 'Cash';
+        final TextEditingController amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -143,8 +144,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                           isCorrectionMode = val;
                           if (isCorrectionMode) {
                             amountPaidNow = 0.0; // reset correction diff
+                            amountController.text = previouslyPaid.toStringAsFixed(2);
                           } else {
                             amountPaidNow = currentPending; // reset normal pay
+                            amountController.text = currentPending.toStringAsFixed(2);
                           }
                         });
                       },
@@ -152,10 +155,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     const SizedBox(height: 12),
                   ],
                   TextFormField(
-                    key: ValueKey(isCorrectionMode ? 'correction_field' : 'normal_field'),
-                    initialValue: isCorrectionMode 
-                        ? previouslyPaid.toStringAsFixed(2) 
-                        : currentPending.toStringAsFixed(2),
+                    controller: amountController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       labelText: isCorrectionMode 
@@ -303,38 +303,59 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
-                        if (isCorrectionMode) {
-                          final double correctedTotalPaid = previouslyPaid + amountPaidNow;
-                          if (correctedTotalPaid < 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Total paid amount cannot be negative')),
-                            );
-                            return;
-                          }
-                        } else {
-                          if (amountPaidNow < 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Payment amount cannot be negative')),
-                            );
-                            return;
-                          }
-                        }
-                        final authState = context.read<AuthBloc>().state;
-                        final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                        final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+                    final String currentText = amountController.text.trim();
+                    final double parsedNow = double.tryParse(currentText) ?? 0.0;
+                    
+                    double finalAmountPaidNow = 0.0;
+                    if (isCorrectionMode) {
+                      finalAmountPaidNow = parsedNow - previouslyPaid;
+                    } else {
+                      finalAmountPaidNow = parsedNow;
+                    }
 
-                        // Store the actual total received (including overpayment) — no cap
-                        final double totalReceivedAmount = previouslyPaid + amountPaidNow;
+                    if (isCorrectionMode) {
+                      final double correctedTotalPaid = previouslyPaid + finalAmountPaidNow;
+                      if (correctedTotalPaid < 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Total paid amount cannot be negative')),
+                        );
+                        return;
+                      }
+                    } else {
+                      if (finalAmountPaidNow < 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Payment amount cannot be negative')),
+                        );
+                        return;
+                      }
+                    }
+                    
+                    final double finalTotalPaidAfter = previouslyPaid + finalAmountPaidNow;
+                    String finalCalculatedStatus = 'Paid';
+                    if (finalTotalPaidAfter >= totalBill) {
+                      finalCalculatedStatus = 'Paid';
+                    } else if (finalTotalPaidAfter > 0) {
+                      finalCalculatedStatus = 'Partial';
+                    } else {
+                      finalCalculatedStatus = 'Pending';
+                    }
 
-                        context.read<OrderBloc>().add(UpdateOrderPayment(
-                              orderId: _currentOrder.id,
-                              paidAmount: totalReceivedAmount,
-                              paymentStatus: calculatedStatus,
-                              previousPaidAmount: previouslyPaid,
-                              userId: userId,
-                              userName: userName,
-                              paymentMethod: selectedPaymentMethod,
-                            ));
+                    final authState = context.read<AuthBloc>().state;
+                    final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+                    final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
+
+                    // Store the actual total received (including overpayment) — no cap
+                    final double totalReceivedAmount = previouslyPaid + finalAmountPaidNow;
+
+                    context.read<OrderBloc>().add(UpdateOrderPayment(
+                          orderId: _currentOrder.id,
+                          paidAmount: totalReceivedAmount,
+                          paymentStatus: finalCalculatedStatus,
+                          previousPaidAmount: previouslyPaid,
+                          userId: userId,
+                          userName: userName,
+                          paymentMethod: selectedPaymentMethod,
+                        ));
                         Navigator.pop(context);
                         if (isOverpaid) {
                           ScaffoldMessenger.of(context).showSnackBar(

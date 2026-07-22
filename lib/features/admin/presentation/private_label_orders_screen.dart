@@ -124,6 +124,7 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
 
     double amountPaidNow = currentPending;
     String selectedMethod = 'Cash';
+    final TextEditingController amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
 
     showDialog(
       context: context,
@@ -189,7 +190,7 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      initialValue: currentPending.toStringAsFixed(2),
+                      controller: amountController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         labelText: 'Amount Received (₹)',
@@ -298,7 +299,20 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
-                    if (amountPaidNow < 0) {
+                    final String currentText = amountController.text.trim();
+                    final double finalAmountPaidNow = double.tryParse(currentText) ?? 0.0;
+                    final double finalTotalPaidAfter = previouslyPaid + finalAmountPaidNow;
+                    
+                    String finalCalculatedStatus = 'Paid';
+                    if (finalTotalPaidAfter >= totalBill) {
+                      finalCalculatedStatus = 'Paid';
+                    } else if (finalTotalPaidAfter > 0) {
+                      finalCalculatedStatus = 'Partial';
+                    } else {
+                      finalCalculatedStatus = 'Pending';
+                    }
+
+                    if (finalAmountPaidNow < 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Payment amount cannot be negative'), backgroundColor: Colors.red),
                       );
@@ -306,8 +320,8 @@ class _PrivateLabelOrdersScreenState extends State<PrivateLabelOrdersScreen> {
                     }
                     context.read<OrderBloc>().add(UpdateOrderPayment(
                       orderId: order.id,
-                      paidAmount: totalPaidAfter,
-                      paymentStatus: calculatedStatus,
+                      paidAmount: finalTotalPaidAfter,
+                      paymentStatus: finalCalculatedStatus,
                       previousPaidAmount: previouslyPaid,
                       userId: userId,
                       userName: userName,
