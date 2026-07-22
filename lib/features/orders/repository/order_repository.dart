@@ -309,22 +309,17 @@ class OrderRepository {
     for (var doc in querySnapshot.docs) {
       final c = CustomerModel.fromMap(doc.data(), doc.id);
       
-      int matchCount = 0;
-      if (c.shopName.toLowerCase().trim() == shopName.toLowerCase()) {
-        matchCount++;
-      }
-      if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
-          c.mobileNumber.trim() == order.customerMobile.trim()) {
-        matchCount++;
-      }
-      if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
-          c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
-        matchCount++;
-      }
-      
-      if (matchCount >= 2) {
-        matchedCustomer = c;
-        break;
+      bool nameMatch = c.shopName.toLowerCase().trim() == shopName.toLowerCase();
+      if (nameMatch) {
+        bool mobileConflict = c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() != order.customerMobile.trim();
+        bool addressConflict = c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
+            c.address.toLowerCase().trim() != order.customerAddress.toLowerCase().trim();
+            
+        if (!mobileConflict && !addressConflict) {
+          matchedCustomer = c;
+          break;
+        }
       }
     }
 
@@ -380,21 +375,17 @@ class OrderRepository {
     CustomerModel? oldCustomer;
     if (!oldOrder.isSupplyOrder && oldOrder.shopName.trim().isNotEmpty) {
       for (var c in allCustomers) {
-        int matchCount = 0;
-        if (c.shopName.toLowerCase().trim() == oldOrder.shopName.toLowerCase().trim()) {
-          matchCount++;
-        }
-        if (c.mobileNumber.trim().isNotEmpty && oldOrder.customerMobile.trim().isNotEmpty &&
-            c.mobileNumber.trim() == oldOrder.customerMobile.trim()) {
-          matchCount++;
-        }
-        if (c.address.toLowerCase().trim().isNotEmpty && oldOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
-            c.address.toLowerCase().trim() == oldOrder.customerAddress.toLowerCase().trim()) {
-          matchCount++;
-        }
-        if (matchCount >= 2) {
-          oldCustomer = c;
-          break;
+        bool nameMatch = c.shopName.toLowerCase().trim() == oldOrder.shopName.toLowerCase().trim();
+        if (nameMatch) {
+          bool mobileConflict = c.mobileNumber.trim().isNotEmpty && oldOrder.customerMobile.trim().isNotEmpty &&
+              c.mobileNumber.trim() != oldOrder.customerMobile.trim();
+          bool addressConflict = c.address.toLowerCase().trim().isNotEmpty && oldOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
+              c.address.toLowerCase().trim() != oldOrder.customerAddress.toLowerCase().trim();
+              
+          if (!mobileConflict && !addressConflict) {
+            oldCustomer = c;
+            break;
+          }
         }
       }
     }
@@ -402,21 +393,17 @@ class OrderRepository {
     CustomerModel? newCustomer;
     if (!newOrder.isSupplyOrder && newOrder.shopName.trim().isNotEmpty) {
       for (var c in allCustomers) {
-        int matchCount = 0;
-        if (c.shopName.toLowerCase().trim() == newOrder.shopName.toLowerCase().trim()) {
-          matchCount++;
-        }
-        if (c.mobileNumber.trim().isNotEmpty && newOrder.customerMobile.trim().isNotEmpty &&
-            c.mobileNumber.trim() == newOrder.customerMobile.trim()) {
-          matchCount++;
-        }
-        if (c.address.toLowerCase().trim().isNotEmpty && newOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
-            c.address.toLowerCase().trim() == newOrder.customerAddress.toLowerCase().trim()) {
-          matchCount++;
-        }
-        if (matchCount >= 2) {
-          newCustomer = c;
-          break;
+        bool nameMatch = c.shopName.toLowerCase().trim() == newOrder.shopName.toLowerCase().trim();
+        if (nameMatch) {
+          bool mobileConflict = c.mobileNumber.trim().isNotEmpty && newOrder.customerMobile.trim().isNotEmpty &&
+              c.mobileNumber.trim() != newOrder.customerMobile.trim();
+          bool addressConflict = c.address.toLowerCase().trim().isNotEmpty && newOrder.customerAddress.toLowerCase().trim().isNotEmpty &&
+              c.address.toLowerCase().trim() != newOrder.customerAddress.toLowerCase().trim();
+              
+          if (!mobileConflict && !addressConflict) {
+            newCustomer = c;
+            break;
+          }
         }
       }
     }
@@ -497,22 +484,17 @@ class OrderRepository {
     for (var doc in querySnapshot.docs) {
       final c = CustomerModel.fromMap(doc.data(), doc.id);
       
-      int matchCount = 0;
-      if (c.shopName.toLowerCase().trim() == shopName.toLowerCase()) {
-        matchCount++;
-      }
-      if (c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
-          c.mobileNumber.trim() == order.customerMobile.trim()) {
-        matchCount++;
-      }
-      if (c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
-          c.address.toLowerCase().trim() == order.customerAddress.toLowerCase().trim()) {
-        matchCount++;
-      }
-      
-      if (matchCount >= 2) {
-        matchedCustomer = c;
-        break;
+      bool nameMatch = c.shopName.toLowerCase().trim() == shopName.toLowerCase();
+      if (nameMatch) {
+        bool mobileConflict = c.mobileNumber.trim().isNotEmpty && order.customerMobile.trim().isNotEmpty &&
+            c.mobileNumber.trim() != order.customerMobile.trim();
+        bool addressConflict = c.address.toLowerCase().trim().isNotEmpty && order.customerAddress.toLowerCase().trim().isNotEmpty &&
+            c.address.toLowerCase().trim() != order.customerAddress.toLowerCase().trim();
+            
+        if (!mobileConflict && !addressConflict) {
+          matchedCustomer = c;
+          break;
+        }
       }
     }
 
