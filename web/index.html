@@ -429,6 +429,26 @@
       script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(loadedVersion);
       script.async = true;
       document.body.appendChild(script);
+
+      // Remove the splash screen once Flutter has loaded the DOM elements
+      const observer = new MutationObserver(function(mutations) {
+        for (let mutation of mutations) {
+          for (let node of mutation.addedNodes) {
+            if (node.tagName === 'FLUTTER-VIEW' || node.tagName === 'FLT-GLASS-PANE') {
+              setTimeout(() => {
+                const loader = document.getElementById('loading-container');
+                if (loader) loader.remove();
+                
+                // Set body background to match app background to prevent dark gaps on keyboard hide
+                document.body.style.background = '#F5F7FA';
+              }, 500);
+              observer.disconnect();
+              return;
+            }
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true });
     })();
   </script>
 </body></html>
