@@ -134,6 +134,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
+  Widget _summaryColumn(String title, double amount, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text('₹${amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
