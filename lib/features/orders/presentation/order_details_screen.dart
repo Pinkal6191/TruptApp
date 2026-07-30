@@ -45,17 +45,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   void _recordPayment() {
-    final double totalBill = _currentOrder.finalAmount;
-    final double previouslyPaid = _currentOrder.paidAmount;
-    final double currentPending = totalBill - previouslyPaid;
-
-    final authState = context.read<AuthBloc>().state;
-    final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
-    double amountPaidNow = currentPending;
-    bool isCorrectionMode = false;
-    String selectedPaymentMethod = 'Cash';
-    final TextEditingController amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -63,323 +52,16 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            final double totalPaidAfter = previouslyPaid + amountPaidNow;
-            final double netRemaining = totalBill - totalPaidAfter; // negative = overpaid
-            final bool isOverpaid = netRemaining < 0;
-            final double returnToCustomer = isOverpaid ? netRemaining.abs() : 0.0;
-            final double stillPending = isOverpaid ? 0.0 : netRemaining;
+        final authState = context.read<AuthBloc>().state;
+        final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
+        final String? userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
+        final String? userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
 
-            String calculatedStatus = 'Paid';
-            if (totalPaidAfter >= totalBill) {
-              calculatedStatus = 'Paid';
-            } else if (totalPaidAfter > 0) {
-              calculatedStatus = 'Partial';
-            } else {
-              calculatedStatus = 'Pending';
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Record Payment',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                  ),
-                  const SizedBox(height: 16),
-                  // Bill summary
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Total Bill:', style: TextStyle(color: Colors.grey)),
-                            Text('₹${totalBill.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Previously Paid:', style: TextStyle(color: Colors.grey)),
-                            Text('₹${previouslyPaid.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const Divider(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Current Pending:', style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text('₹${currentPending.toStringAsFixed(2)}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (isAdmin) ...[
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Admin Correction Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      subtitle: const Text('Directly correct the total amount paid so far', style: TextStyle(fontSize: 12)),
-                      value: isCorrectionMode,
-                      activeThumbColor: const Color(0xFF1E3A8A),
-                      onChanged: (val) {
-                        setModalState(() {
-                          isCorrectionMode = val;
-                          if (isCorrectionMode) {
-                            amountPaidNow = 0.0; // reset correction diff
-                            amountController.text = previouslyPaid.toStringAsFixed(2);
-                          } else {
-                            amountPaidNow = currentPending; // reset normal pay
-                            amountController.text = currentPending.toStringAsFixed(2);
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  TextFormField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: isCorrectionMode 
-                          ? 'New Total Paid Amount (₹)' 
-                          : 'Amount Received from Customer (₹)',
-                      border: const OutlineInputBorder(),
-                      helperText: isCorrectionMode 
-                          ? 'Enter the corrected total amount that has been paid' 
-                          : 'Enter the exact cash received (can be more than pending)',
-                    ),
-                    onChanged: (val) {
-                      setModalState(() {
-                        final parsed = double.tryParse(val.trim()) ?? 0.0;
-                        if (isCorrectionMode) {
-                          amountPaidNow = parsed - previouslyPaid;
-                        } else {
-                          amountPaidNow = parsed;
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedPaymentMethod,
-                    decoration: const InputDecoration(
-                      labelText: 'Payment Method',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                      DropdownMenuItem(value: 'GPay', child: Text('GPay')),
-                      DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
-                      DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
-                      DropdownMenuItem(value: 'Other', child: Text('Other')),
-                    ],
-                    onChanged: (val) {
-                      setModalState(() {
-                        selectedPaymentMethod = val ?? 'Cash';
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Result card — changes color based on overpaid / partial / paid
-                  if (isOverpaid) ...[
-                    // OVERPAYMENT — show Return to Customer
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.purple.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Bill Fully Settled ✓', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                  const SizedBox(height: 2),
-                                  const Text('Return to Customer:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              Text(
-                                '₹${returnToCustomer.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.purple.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Customer gave:', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                Text('₹${(previouslyPaid + amountPaidNow).toStringAsFixed(2)}',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple.shade900)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    // Normal — show remaining pending
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: stillPending > 0 ? Colors.orange.shade50 : Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: stillPending > 0 ? Colors.orange.shade200 : Colors.green.shade200,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Remaining after payment:', style: TextStyle(fontSize: 12, color: Colors.black87)),
-                              const SizedBox(height: 4),
-                              Text(
-                                '₹${stillPending.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: stillPending > 0 ? Colors.orange.shade800 : Colors.green.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Chip(
-                            label: Text(calculatedStatus),
-                            backgroundColor: stillPending > 0 ? Colors.orange.shade100 : Colors.green.shade100,
-                            labelStyle: TextStyle(
-                              color: stillPending > 0 ? Colors.orange.shade900 : Colors.green.shade900,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: isOverpaid ? Colors.purple.shade600 : const Color(0xFF10B981),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () {
-                    final String currentText = amountController.text.trim();
-                    final double parsedNow = double.tryParse(currentText) ?? 0.0;
-                    
-                    double finalAmountPaidNow = 0.0;
-                    if (isCorrectionMode) {
-                      finalAmountPaidNow = parsedNow - previouslyPaid;
-                    } else {
-                      finalAmountPaidNow = parsedNow;
-                    }
-
-                    if (isCorrectionMode) {
-                      final double correctedTotalPaid = previouslyPaid + finalAmountPaidNow;
-                      if (correctedTotalPaid < 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Total paid amount cannot be negative')),
-                        );
-                        return;
-                      }
-                    } else {
-                      if (finalAmountPaidNow < 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Payment amount cannot be negative')),
-                        );
-                        return;
-                      }
-                    }
-                    
-                    final double finalTotalPaidAfter = previouslyPaid + finalAmountPaidNow;
-                    String finalCalculatedStatus = 'Paid';
-                    if (finalTotalPaidAfter >= totalBill) {
-                      finalCalculatedStatus = 'Paid';
-                    } else if (finalTotalPaidAfter > 0) {
-                      finalCalculatedStatus = 'Partial';
-                    } else {
-                      finalCalculatedStatus = 'Pending';
-                    }
-
-                    final authState = context.read<AuthBloc>().state;
-                    final userId = authState is Authenticated && authState.user.role != 'admin' ? authState.user.uid : null;
-                    final userName = authState is Authenticated && authState.user.role != 'admin' ? authState.user.name : null;
-
-                    // Store the actual total received (including overpayment) — no cap
-                    final double totalReceivedAmount = previouslyPaid + finalAmountPaidNow;
-
-                    context.read<OrderBloc>().add(UpdateOrderPayment(
-                          orderId: _currentOrder.id,
-                          paidAmount: totalReceivedAmount,
-                          paymentStatus: finalCalculatedStatus,
-                          previousPaidAmount: previouslyPaid,
-                          userId: userId,
-                          userName: userName,
-                          paymentMethod: selectedPaymentMethod,
-                        ));
-                        Navigator.pop(context);
-                        if (isOverpaid) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Payment recorded. Return ₹${returnToCustomer.toStringAsFixed(2)} to customer.'),
-                              backgroundColor: Colors.purple.shade700,
-                              duration: const Duration(seconds: 4),
-                            ),
-                          );
-                        }
-                      },
-                      child: Text(
-                        isOverpaid
-                            ? 'Confirm & Return ₹${returnToCustomer.toStringAsFixed(2)}'
-                            : 'Confirm Payment',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            );
-          },
+        return _RecordPaymentSheet(
+          order: _currentOrder,
+          isAdmin: isAdmin,
+          userId: userId,
+          userName: userName,
         );
       },
     );
@@ -1102,5 +784,356 @@ class _OrderDetailsRestoreLoaderState extends State<OrderDetailsRestoreLoader> {
       );
     }
     return OrderDetailsScreen(order: _order!);
+  }
+}
+
+class _RecordPaymentSheet extends StatefulWidget {
+  final OrderModel order;
+  final bool isAdmin;
+  final String? userId;
+  final String? userName;
+
+  const _RecordPaymentSheet({
+    required this.order,
+    required this.isAdmin,
+    this.userId,
+    this.userName,
+  });
+
+  @override
+  State<_RecordPaymentSheet> createState() => _RecordPaymentSheetState();
+}
+
+class _RecordPaymentSheetState extends State<_RecordPaymentSheet> {
+  late double amountPaidNow;
+  bool isCorrectionMode = false;
+  String selectedPaymentMethod = 'Cash';
+  late TextEditingController amountController;
+
+  @override
+  void initState() {
+    super.initState();
+    final double currentPending = widget.order.finalAmount - widget.order.paidAmount;
+    amountPaidNow = currentPending;
+    amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double totalBill = widget.order.finalAmount;
+    final double previouslyPaid = widget.order.paidAmount;
+    final double currentPending = totalBill - previouslyPaid;
+
+    final double totalPaidAfter = previouslyPaid + amountPaidNow;
+    final double netRemaining = totalBill - totalPaidAfter; // negative = overpaid
+    final bool isOverpaid = netRemaining < 0;
+    final double returnToCustomer = isOverpaid ? netRemaining.abs() : 0.0;
+    final double stillPending = isOverpaid ? 0.0 : netRemaining;
+
+    String calculatedStatus = 'Paid';
+    if (totalPaidAfter >= totalBill) {
+      calculatedStatus = 'Paid';
+    } else if (totalPaidAfter > 0) {
+      calculatedStatus = 'Partial';
+    } else {
+      calculatedStatus = 'Pending';
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 24,
+        right: 24,
+        top: 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Record Payment',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total Bill:', style: TextStyle(color: Colors.grey)),
+                    Text('₹${totalBill.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Previously Paid:', style: TextStyle(color: Colors.grey)),
+                    Text('₹${previouslyPaid.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const Divider(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Current Pending:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('₹${currentPending.toStringAsFixed(2)}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (widget.isAdmin) ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Admin Correction Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text('Directly correct the total amount paid so far', style: TextStyle(fontSize: 12)),
+              value: isCorrectionMode,
+              activeThumbColor: const Color(0xFF1E3A8A),
+              onChanged: (val) {
+                setState(() {
+                  isCorrectionMode = val;
+                  if (isCorrectionMode) {
+                    amountPaidNow = 0.0;
+                    amountController.text = previouslyPaid.toStringAsFixed(2);
+                  } else {
+                    amountPaidNow = currentPending;
+                    amountController.text = currentPending.toStringAsFixed(2);
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextFormField(
+            controller: amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: isCorrectionMode 
+                  ? 'New Total Paid Amount (₹)' 
+                  : 'Amount Received from Customer (₹)',
+              border: const OutlineInputBorder(),
+              helperText: isCorrectionMode 
+                  ? 'Enter the corrected total amount that has been paid' 
+                  : 'Enter the exact cash received (can be more than pending)',
+            ),
+            onChanged: (val) {
+              setState(() {
+                final parsed = double.tryParse(val.trim()) ?? 0.0;
+                if (isCorrectionMode) {
+                  amountPaidNow = parsed - previouslyPaid;
+                } else {
+                  amountPaidNow = parsed;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: selectedPaymentMethod,
+            decoration: const InputDecoration(
+              labelText: 'Payment Method',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+              DropdownMenuItem(value: 'GPay', child: Text('GPay')),
+              DropdownMenuItem(value: 'NEFT', child: Text('NEFT')),
+              DropdownMenuItem(value: 'Cheque', child: Text('Cheque')),
+              DropdownMenuItem(value: 'Other', child: Text('Other')),
+            ],
+            onChanged: (val) {
+              setState(() {
+                selectedPaymentMethod = val ?? 'Cash';
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          if (isOverpaid) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.purple.shade200),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Overpaid:', style: TextStyle(fontSize: 11, color: Colors.purple)),
+                          const SizedBox(height: 2),
+                          const Text('Return to Customer:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      Text(
+                        '₹${returnToCustomer.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Customer gave:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                        Text('₹${(previouslyPaid + amountPaidNow).toStringAsFixed(2)}',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple.shade900)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: stillPending > 0 ? Colors.orange.shade50 : Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: stillPending > 0 ? Colors.orange.shade200 : Colors.green.shade200,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Remaining after payment:', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                      const SizedBox(height: 4),
+                      Text(
+                        '₹${stillPending.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: stillPending > 0 ? Colors.orange.shade800 : Colors.green.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Chip(
+                    label: Text(calculatedStatus),
+                    backgroundColor: stillPending > 0 ? Colors.orange.shade100 : Colors.green.shade100,
+                    labelStyle: TextStyle(
+                      color: stillPending > 0 ? Colors.orange.shade900 : Colors.green.shade900,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: isOverpaid ? Colors.purple.shade600 : const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final String currentText = amountController.text.trim();
+                final double parsedNow = double.tryParse(currentText) ?? 0.0;
+                
+                double finalAmountPaidNow = 0.0;
+                if (isCorrectionMode) {
+                  finalAmountPaidNow = parsedNow - previouslyPaid;
+                } else {
+                  finalAmountPaidNow = parsedNow;
+                }
+
+                if (isCorrectionMode) {
+                  final double correctedTotalPaid = previouslyPaid + finalAmountPaidNow;
+                  if (correctedTotalPaid < 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Total paid amount cannot be negative')),
+                    );
+                    return;
+                  }
+                } else {
+                  if (finalAmountPaidNow < 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Payment amount cannot be negative')),
+                    );
+                    return;
+                  }
+                }
+                
+                final double finalTotalPaidAfter = previouslyPaid + finalAmountPaidNow;
+                String finalCalculatedStatus = 'Paid';
+                if (finalTotalPaidAfter >= totalBill) {
+                  finalCalculatedStatus = 'Paid';
+                } else if (finalTotalPaidAfter > 0) {
+                  finalCalculatedStatus = 'Partial';
+                } else {
+                  finalCalculatedStatus = 'Pending';
+                }
+
+                final double totalReceivedAmount = previouslyPaid + finalAmountPaidNow;
+
+                context.read<OrderBloc>().add(UpdateOrderPayment(
+                      orderId: widget.order.id,
+                      paidAmount: totalReceivedAmount,
+                      paymentStatus: finalCalculatedStatus,
+                      previousPaidAmount: previouslyPaid,
+                      userId: widget.userId,
+                      userName: widget.userName,
+                      paymentMethod: selectedPaymentMethod,
+                    ));
+                Navigator.pop(context);
+                if (isOverpaid) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Payment recorded. Return ₹${returnToCustomer.toStringAsFixed(2)} to customer.'),
+                      backgroundColor: Colors.purple.shade700,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                isOverpaid
+                    ? 'Confirm & Return ₹${returnToCustomer.toStringAsFixed(2)}'
+                    : 'Confirm Payment',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
   }
 }
