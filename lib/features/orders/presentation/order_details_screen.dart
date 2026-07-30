@@ -49,6 +49,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final double previouslyPaid = _currentOrder.paidAmount;
     final double currentPending = totalBill - previouslyPaid;
 
+    final authState = context.read<AuthBloc>().state;
+    final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
+    double amountPaidNow = currentPending;
+    bool isCorrectionMode = false;
+    String selectedPaymentMethod = 'Cash';
+    final TextEditingController amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -56,13 +63,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        final authState = context.read<AuthBloc>().state;
-        final bool isAdmin = authState is Authenticated && authState.user.role == 'admin';
-        double amountPaidNow = currentPending;
-        bool isCorrectionMode = false;
-        String selectedPaymentMethod = 'Cash';
-        final TextEditingController amountController = TextEditingController(text: currentPending.toStringAsFixed(2));
-
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             final double totalPaidAfter = previouslyPaid + amountPaidNow;
