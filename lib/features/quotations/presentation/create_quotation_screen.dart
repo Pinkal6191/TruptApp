@@ -79,19 +79,22 @@ class _CreateQuotationScreenState extends State<CreateQuotationScreen> {
           '1. 50% advance payment required upon order confirmation.\n'
           '2. Delivery: 7-10 working days from artwork confirmation.\n'
           '3. Customized label printing charges are applicable for first-time orders.\n'
-          '4. Quotation is valid for 30 days.';
+          '4. Quotation is valid for 30 days.\n'
+          '5. Transport and freight charges are extra.';
     } else if (_quotationType == 'Distributor Supply') {
       _termsController.text = 
           '1. Security deposit and signed contract required for distributor status.\n'
           '2. Supply schedules will follow standard weekly dispatch rotations.\n'
           '3. Payments must be processed as per standard billing cycles.\n'
-          '4. Quotation is valid for 30 days.';
+          '4. Quotation is valid for 30 days.\n'
+          '5. Transport and freight charges are extra.';
     } else {
       _termsController.text = 
           '1. Standard payment terms upon receipt of order.\n'
           '2. Standard deliveries will complete in 2-3 business days.\n'
           '3. Crates remain the property of Trupt Enterprise and must be returned.\n'
-          '4. Quotation is valid for 30 days.';
+          '4. Quotation is valid for 30 days.\n'
+          '5. Transport and freight charges are extra.';
     }
   }
 
