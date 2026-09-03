@@ -334,6 +334,12 @@
       // Fetch the version.json file with a cache buster
       async function checkVersion(isInitial = false) {
         try {
+          // If APP_VERSION was not injected during build, skip check to avoid false positives
+          if (RUNNING_VERSION.startsWith('{{')) {
+            console.log('[App Version] APP_VERSION not injected during build — skipping version check.');
+            return;
+          }
+
           const cacheBuster = new Date().getTime();
           const response = await fetch('version.json?cb=' + cacheBuster, {
             cache: 'no-store',
@@ -346,10 +352,9 @@
           const data = await response.json();
           const serverVersion = data.version + '+' + data.build_number;
 
-          const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+13' : RUNNING_VERSION;
-          console.log('[App Version] Check - Running:', loadedVersion, 'Server:', serverVersion);
+          console.log('[App Version] Check - Running:', RUNNING_VERSION, 'Server:', serverVersion);
 
-          if (loadedVersion !== serverVersion) {
+          if (RUNNING_VERSION !== serverVersion) {
             console.log('[App Version] Update detected! Showing update banner.');
             showUpdateBanner();
           }
@@ -424,7 +429,8 @@
       }, 60000);
 
       // Dynamic loading of flutter_bootstrap.js with cache-busting version query parameter
-      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.1+13' : RUNNING_VERSION;
+      const loadedVersion = RUNNING_VERSION.startsWith('{{') ? '1.0.2+18' : RUNNING_VERSION;
+
       const script = document.createElement('script');
       script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(loadedVersion);
       script.async = true;
