@@ -269,12 +269,12 @@ class OrderRepository {
 
   Future<void> deleteOrder(OrderModel order) async {
     try {
-      await _firestore.collection(collectionName).doc(order.id).delete();
-      
-      // Sync Customer metrics on delete!
-      await _updateCustomerOnOrderDeleted(order);
+      // ✅ IMPORTANT: Reverse stock FIRST before deleting the order.
+      // If we delete first and then stock reversal fails (network drop, app close),
+      // the order is gone forever but stock is never restored — causing discrepancies.
+      // By reversing stock first, if it fails, the order still exists and can be retried.
 
-      // Reverse Stock Maintenance
+      // Reverse Stock Maintenance FIRST
       for (var item in order.items) {
         if (order.creatorRole == 'distributor') {
           // Reverse distributor selling to Retailer -> Increase Distributor's stock back
@@ -289,6 +289,12 @@ class OrderRepository {
           await _productionRepository.updateFactoryStock(item.productId, item.productName, item.quantity);
         }
       }
+
+      // Sync Customer metrics on delete
+      await _updateCustomerOnOrderDeleted(order);
+
+      // Delete the order LAST — only after all stock is safely reversed
+      await _firestore.collection(collectionName).doc(order.id).delete();
     } catch (e) {
       throw Exception('Failed to delete order: $e');
     }
