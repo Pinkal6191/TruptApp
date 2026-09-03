@@ -46,6 +46,8 @@ import 'private_label_orders_screen.dart';
 import 'contract_generator_screen.dart';
 import 'contracts_list_screen.dart';
 import '../../purchase_orders/presentation/purchase_orders_list_screen.dart';
+import 'stock_transfer_screen.dart';
+
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -408,6 +410,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        'Stock Transfer Log',
+                        'Audit stock sent to distributors',
+                        Icons.local_shipping,
+                        Colors.teal,
+                        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StockTransferScreen())).then((_) => RouteTracker.clearRoute()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(child: SizedBox()),
+                    const SizedBox(width: 12),
+                    const Expanded(child: SizedBox()),
+                  ],
+                ),
+
                 const SizedBox(height: 12),
                 Row(
                   children: [
