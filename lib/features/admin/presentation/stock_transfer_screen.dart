@@ -39,35 +39,19 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      setState(() { _error = e.toString(); _isLoading = false; });
     }
   }
 
-  Map<String, List<Map<String, dynamic>>> _groupByProduct() {
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-
+  /// Total crates per product across all orders
+  Map<String, int> _totalsByProduct() {
+    final Map<String, int> totals = {};
     for (var order in _supplyOrders) {
       for (var item in order.items) {
-        grouped.putIfAbsent(item.productName, () => []);
-        grouped[item.productName]!.add({
-          'date': order.createdAt,
-          'distributor': order.partnerName,
-          'qty': item.quantity,
-          'invoice': order.invoiceNumber,
-        });
+        totals[item.productName] = (totals[item.productName] ?? 0) + item.quantity;
       }
     }
-
-    for (var key in grouped.keys) {
-      grouped[key]!.sort(
-        (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
-      );
-    }
-
-    return grouped;
+    return totals;
   }
 
   @override
@@ -88,12 +72,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
     if (_error != null) {
       return Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text('Stock Transfer History'),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E3A8A),
-          elevation: 0,
-        ),
+        appBar: AppBar(title: const Text('Stock Transfer History'), backgroundColor: Colors.white, foregroundColor: const Color(0xFF1E3A8A), elevation: 0),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -109,17 +88,10 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
       );
     }
 
-    final grouped = _groupByProduct();
-
-    if (grouped.isEmpty) {
+    if (_supplyOrders.isEmpty) {
       return Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text('Stock Transfer History'),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E3A8A),
-          elevation: 0,
-        ),
+        appBar: AppBar(title: const Text('Stock Transfer History'), backgroundColor: Colors.white, foregroundColor: const Color(0xFF1E3A8A), elevation: 0),
         body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -133,170 +105,188 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
       );
     }
 
-    final productNames = grouped.keys.toList()..sort();
+    final totals = _totalsByProduct();
+    final totalCrates = totals.values.fold(0, (a, b) => a + b);
 
-    return DefaultTabController(
-      length: productNames.length,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text('Stock Transfer History'),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E3A8A),
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh',
-              onPressed: _loadSupplyOrders,
-            ),
-          ],
-          bottom: TabBar(
-            isScrollable: true,
-            labelColor: const Color(0xFF1E3A8A),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF1E3A8A),
-            tabs: productNames.map((name) => Tab(text: name)).toList(),
-          ),
-        ),
-        body: TabBarView(
-          children: productNames.map((productName) {
-            final entries = grouped[productName]!;
-            final totalCrates = entries.fold<int>(0, (sum, e) => sum + (e['qty'] as int));
-
-            final Map<String, int> byDistributor = {};
-            for (var e in entries) {
-              final dist = e['distributor'] as String;
-              byDistributor[dist] = (byDistributor[dist] ?? 0) + (e['qty'] as int);
-            }
-
-            return Column(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Stock Transfer History'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1E3A8A),
+        elevation: 0,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: _loadSupplyOrders),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ── Summary Banner ──────────────────────────────────────
+          Container(
+            width: double.infinity,
+            color: const Color(0xFF1E3A8A),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Total Banner
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFF1E3A8A),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Sent', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          Text('$totalCrates Crates', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('Transfers', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          Text('${entries.length} Bills', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Distributor Summary Strip
-                if (byDistributor.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    color: const Color(0xFFE8EDF5),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: byDistributor.entries.map((entry) => Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.person, size: 14, color: Color(0xFF1E3A8A)),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${entry.key}: ${entry.value} crates',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
-                              ),
-                            ],
-                          ),
-                        )).toList(),
-                      ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Total Sent (All Products)', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('$totalCrates Crates', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                      ],
                     ),
-                  ),
-
-                // Transfer List
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = entries[index];
-                      final date = entry['date'] as DateTime;
-                      final qty = entry['qty'] as int;
-                      final distributor = entry['distributor'] as String;
-                      final invoice = entry['invoice'] as String;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 1.5,
-                        shadowColor: Colors.black12,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
-                                child: Text(
-                                  '${entries.length - index}',
-                                  style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(distributor, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Text(DateFormat('dd MMM yyyy').format(date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                        const SizedBox(width: 12),
-                                        const Icon(Icons.receipt, size: 12, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Text(invoice.isEmpty ? 'No Invoice' : invoice, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-                                ),
-                                child: Text(
-                                  '+$qty',
-                                  style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 18),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('Total Bills', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('${_supplyOrders.length}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Per-product totals in a row
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  children: totals.entries.map((entry) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      '${entry.key}: ${entry.value} crates',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  )).toList(),
                 ),
               ],
-            );
-          }).toList(),
-        ),
+            ),
+          ),
+
+          // ── Bill List ───────────────────────────────────────────
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _supplyOrders.length,
+              itemBuilder: (context, index) {
+                final order = _supplyOrders[index];
+                final billNumber = _supplyOrders.length - index;
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 1.5,
+                  shadowColor: Colors.black12,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Bill Header ──
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                              child: Text(
+                                '$billNumber',
+                                style: const TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order.partnerName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        DateFormat('dd MMM yyyy').format(order.createdAt),
+                                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.receipt, size: 12, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        order.invoiceNumber.isEmpty ? 'No Invoice' : order.invoiceNumber,
+                                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 10),
+
+                        // ── Product breakdown for this bill ──
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: order.items.map((item) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.productName,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF065F46),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '+${item.quantity}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
